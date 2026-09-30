@@ -13,6 +13,11 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       title="Sign in"
       subtitle="We'll email you a link. No password to remember."
     >
+      {error === "dev" && (
+        <p className="border-warning text-foreground mb-6 border-l-2 py-1 pl-3 text-sm" role="alert">
+          That test sign-in didn&apos;t work — the demo database isn&apos;t connected yet. Try again in a few minutes.
+        </p>
+      )}
       {error === "link" && (
         <p className="border-warning text-foreground mb-6 border-l-2 py-1 pl-3 text-sm" role="alert">
           That sign-in link has expired or was already used. Enter your email to get a new one.

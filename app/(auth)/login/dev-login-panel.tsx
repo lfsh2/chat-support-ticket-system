@@ -8,13 +8,8 @@ export function DevLoginPanel({ demoKey }: { demoKey?: string }) {
   return (
     <section aria-labelledby="dev-login-h" className="border-warning/60 mt-10 rounded-xl border border-dashed p-4">
       <h2 id="dev-login-h" className="note text-[15px]">
-        {isDemo ? "Demo · sign in as a test user" : "Dev only · sign in as"}
+        Dev only · sign in as
       </h2>
-      {isDemo && (
-        <p className="text-muted-foreground mt-1 text-xs">
-          Pick anyone to look around. Each person sees the hub the way that kind of member would.
-        </p>
-      )}
       <ul className="mt-3 grid grid-cols-2 gap-2">
         {DEV_USERS.map((u) => (
           <li key={u.email}>
