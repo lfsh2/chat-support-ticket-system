@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { APP_NAME } from "@/lib/config";
 import { AuthCard } from "../auth-card";
+import { DevLoginPanel } from "./dev-login-panel";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: `Sign in · ${APP_NAME}` };
@@ -18,6 +19,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </p>
       )}
       <LoginForm next={typeof next === "string" ? next : undefined} />
+      <DevLoginPanel />
     </AuthCard>
   );
 }
