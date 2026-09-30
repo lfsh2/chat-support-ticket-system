@@ -1,7 +1,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
-const TONES = ["bg-[#2F5BEA]", "bg-[#C59267]", "bg-[#1F7A55]", "bg-[#7A4FD1]", "bg-[#B7791F]", "bg-[#C2417A]"];
+// Deep, ink-like tones drawn from the brand, all ≥ 4.5:1 against white initials.
+const TONES = ["bg-[#2A3A63]", "bg-[#8A5A36]", "bg-[#2F5BEA]", "bg-[#1F6B4C]", "bg-[#6B3E5E]", "bg-[#4A5568]"];
 
 function initials(name: string) {
   const parts = name.replace(/\(.*?\)/g, "").trim().split(/\s+/);

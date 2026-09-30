@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { LifeBuoy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shell/empty-state";
 import { TopBar } from "@/components/shell/top-bar";
@@ -13,15 +12,20 @@ export default function HelpPage() {
     <>
       <TopBar title="Help" />
       <EmptyState
-        icon={LifeBuoy}
-        title="No open tickets"
+        eyebrow="Your tickets"
+        title="No open tickets."
         action={
-          <Button nativeButton={false} render={<a href={`mailto:${SUPPORT_EMAIL}`} />} className="h-11 px-5">
+          <Button
+            nativeButton={false}
+            render={<a href={`mailto:${SUPPORT_EMAIL}`} />}
+            className="bg-ink text-background hover:bg-ink/90 h-11 cursor-pointer px-5 font-semibold"
+          >
             Get help
           </Button>
         }
       >
-        Stuck on something? Send us a note and we&apos;ll get back to you. We usually reply within one business day.
+        Stuck on something? Tell us what&apos;s going on and we&apos;ll take it from there. We usually reply within one
+        business day.
       </EmptyState>
     </>
   );

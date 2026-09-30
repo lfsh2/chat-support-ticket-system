@@ -4,7 +4,6 @@ import { memo, useCallback, useState } from "react";
 import { format } from "date-fns";
 import { AlertCircle, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -119,8 +118,8 @@ export const MessageItem = memo(function MessageItem({
       {...(interactive && isMobile ? longPress : {})}
       id={`message-${message.id}`}
       className={cn(
-        "group/message hover:bg-muted/40 relative flex gap-3 px-4 transition-colors md:px-5",
-        isGroupStart ? "mt-3 pt-1 pb-0.5" : "py-0.5",
+        "group/message relative flex gap-3 px-4 transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--foreground)_3%,transparent)] md:px-6",
+        isGroupStart ? "mt-2.5 pt-1.5 pb-0.5" : "py-0.5",
         message.status === "sending" && "opacity-60",
         message.status && "animate-in slide-in-from-bottom-2 fade-in motion-reduce:animate-none duration-200",
         "select-none md:select-text",
@@ -132,7 +131,7 @@ export const MessageItem = memo(function MessageItem({
         ) : (
           <time
             dateTime={message.created_at ?? undefined}
-            className="text-muted-foreground hidden pt-1 text-[10px] leading-5 tabular-nums group-hover/message:block"
+            className="text-muted-foreground hidden pt-[3px] text-right text-[11px] leading-5 tabular-nums group-hover/message:block"
           >
             {format(at, "h:mm")}
           </time>
@@ -141,12 +140,10 @@ export const MessageItem = memo(function MessageItem({
 
       <div className="min-w-0 flex-1">
         {isGroupStart && (
-          <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-[15px] font-semibold">{authorName}</span>
+          <div className="flex flex-wrap items-baseline gap-x-2 leading-5">
+            <span className="text-[15px] font-semibold tracking-[-0.005em]">{authorName}</span>
             {isStaffRole(message.author?.role) && (
-              <Badge variant="secondary" className="bg-primary/10 text-primary h-5 px-1.5 text-[11px]">
-                Team
-              </Badge>
+              <span className="note text-muted-foreground text-[14px] leading-none">team</span>
             )}
             <time dateTime={message.created_at ?? undefined} className="text-muted-foreground text-xs tabular-nums">
               {format(at, "h:mm a")}
@@ -190,8 +187,8 @@ export const MessageItem = memo(function MessageItem({
         {!deleted && <ReactionBar reactions={message.reactions} myId={myId} onToggle={handlers.onReact} />}
 
         {message.reply_count > 0 && (
-          <p className="text-primary mt-1 flex items-center gap-1 text-sm font-medium">
-            <MessageSquare className="size-4" aria-hidden />
+          <p className="text-primary mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold">
+            <MessageSquare className="size-3.5" aria-hidden />
             {message.reply_count} {message.reply_count === 1 ? "reply" : "replies"}
           </p>
         )}

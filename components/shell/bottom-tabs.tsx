@@ -22,7 +22,7 @@ export function BottomTabs() {
   return (
     <nav
       aria-label="Main"
-      className="bg-background border-t pb-[env(safe-area-inset-bottom)] md:hidden in-data-keyboard-open:hidden"
+      className="paper border-rule border-t pb-[env(safe-area-inset-bottom)] md:hidden in-data-keyboard-open:hidden"
     >
       <ul className="grid grid-cols-4">
         {TABS.map(({ href, match, label, icon: Icon }) => {
@@ -34,14 +34,22 @@ export function BottomTabs() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium",
-                  active ? "text-primary" : "text-muted-foreground",
+                  "relative flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 text-[11px] font-semibold tracking-wide transition-colors",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
+                {/* Ink tab marker instead of a tinted icon. */}
+                <span
+                  className={cn(
+                    "bg-ink absolute top-0 h-[3px] w-8 rounded-b-full transition-opacity duration-200",
+                    active ? "opacity-100" : "opacity-0",
+                  )}
+                  aria-hidden
+                />
                 <span className="relative">
-                  <Icon className="size-6" strokeWidth={active ? 2.25 : 1.75} aria-hidden />
+                  <Icon className="size-[22px]" strokeWidth={1.75} aria-hidden />
                   {badge && (
-                    <span className="bg-primary text-primary-foreground absolute -top-1.5 left-4 min-w-5 rounded-full px-1 text-center text-[11px] leading-5">
+                    <span className="bg-primary text-primary-foreground absolute -top-1 left-3.5 min-w-[18px] rounded-[4px] px-1 text-center text-[10px] leading-[16px] font-bold tabular-nums">
                       <span className="sr-only">, </span>
                       {badge}
                       <span className="sr-only"> unread</span>

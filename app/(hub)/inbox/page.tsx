@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Bell } from "lucide-react";
 import { EmptyState } from "@/components/shell/empty-state";
 import { TopBar } from "@/components/shell/top-bar";
 import { APP_NAME } from "@/lib/config";
@@ -11,8 +10,8 @@ export default function InboxPage() {
   return (
     <>
       <TopBar title="Inbox" />
-      <EmptyState icon={Bell} title="You're all caught up">
-        When someone mentions you or replies to you, it&apos;ll show up here.
+      <EmptyState eyebrow="Mentions and replies" title="You're all caught up.">
+        When someone mentions you, replies to you, or updates one of your tickets, it&apos;ll land here.
       </EmptyState>
     </>
   );

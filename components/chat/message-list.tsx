@@ -82,7 +82,7 @@ export const MessageList = forwardRef<MessageListHandle, Props>(function Message
           <div ref={sentinel} aria-hidden className="h-px" />
           {hasOlder ? (
             loadingOlder && (
-              <div className="space-y-4 px-5 py-4" aria-label="Loading older messages">
+              <div className="space-y-4 px-4 py-4 md:px-6" aria-label="Loading older messages">
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="flex gap-3">
                     <Skeleton className="size-9 rounded-full" />
@@ -112,7 +112,7 @@ export const MessageList = forwardRef<MessageListHandle, Props>(function Message
       {!atBottom && (
         <Button
           onClick={() => scroller.current?.scrollTo({ top: 0, behavior: "smooth" })}
-          className="animate-in fade-in slide-in-from-bottom-2 absolute right-4 bottom-3 h-10 gap-1.5 rounded-full px-4 shadow-md motion-reduce:animate-none"
+          className="animate-in fade-in slide-in-from-bottom-2 bg-ink text-background hover:bg-ink/90 absolute right-4 bottom-3 h-10 cursor-pointer gap-1.5 rounded-lg px-3.5 text-[13px] font-semibold motion-reduce:animate-none md:right-6"
         >
           <ArrowDown className="size-4" aria-hidden />
           {newWhileAway > 0 ? `${newWhileAway} new ${newWhileAway === 1 ? "message" : "messages"}` : "Jump to latest"}

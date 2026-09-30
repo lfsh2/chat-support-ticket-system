@@ -109,13 +109,14 @@ export function ChannelView({
   return (
     <>
       <TopBar
+        accent={program?.accent}
         title={
           <>
-            <Icon className="text-muted-foreground size-4 shrink-0" aria-hidden />
+            <span className="text-muted-foreground font-sans text-[17px] font-medium" aria-hidden>
+              {channel.type === "announcement" ? "" : "#"}
+            </span>
             <span className="truncate">{channel.name}</span>
-            {program && (
-              <span className="ml-1 size-2 shrink-0 rounded-full" style={{ background: program.accent }} aria-label={program.label} />
-            )}
+            {program && <span className="sr-only">, {program.label}</span>}
           </>
         }
         subtitle={channel.description}
@@ -136,14 +137,20 @@ export function ChannelView({
         onDelete={chat.remove}
         onRetry={chat.retry}
         intro={
-          <div className="px-4 pt-8 pb-4 md:px-5">
-            <div className="bg-muted mb-3 flex size-12 items-center justify-center rounded-xl">
-              <Icon className="size-6" aria-hidden />
-            </div>
-            <h2 className="text-xl font-semibold">Welcome to #{channel.name}</h2>
-            <p className="text-muted-foreground mt-1 text-[15px]">
+          <div className="px-4 pt-10 pb-2 md:px-6 md:pt-14">
+            <p className="note text-muted-foreground flex items-center gap-2 text-[15px]">
+              <Icon className="size-4 not-italic" aria-hidden />
+              {program ? `${program.label} members` : "Everyone in the hub"}
+            </p>
+            <h2 className="font-display mt-1 text-[34px] leading-[1.05] tracking-tight md:text-[44px]">
+              The start of {channel.type === "announcement" ? "" : "#"}
+              {channel.name}
+            </h2>
+            <p className="text-muted-foreground mt-3 max-w-prose text-[15px] leading-relaxed">
               {channel.description ? `${channel.description}. ` : ""}
-              {canPost ? "Say hello — everyone here is part of the community." : "The team shares news and updates here."}
+              {canPost
+                ? "Say hello, ask a question, or share what you're working on."
+                : "The team posts news and updates here. React to let us know you've seen them."}
             </p>
           </div>
         }

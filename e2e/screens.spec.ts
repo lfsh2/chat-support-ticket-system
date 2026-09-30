@@ -29,6 +29,8 @@ for (const width of [390, 1280]) {
         await page.goto("/c");
         await page.screenshot({ path: `test-results/screens/chat-tab-${width}-${scheme}.png` });
       }
+      await page.goto("/help");
+      await page.screenshot({ path: `test-results/screens/help-${width}-${scheme}.png` });
       await page.goto("/me");
       await page.screenshot({ path: `test-results/screens/me-${width}-${scheme}.png` });
     });

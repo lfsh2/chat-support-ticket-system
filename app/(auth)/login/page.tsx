@@ -9,11 +9,11 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { next, error } = await searchParams;
   return (
     <AuthCard
-      title={`Welcome to ${APP_NAME}`}
-      subtitle="Chat with the team, get help, and find answers. No password needed."
+      title="Sign in"
+      subtitle="We'll email you a link. No password to remember."
     >
       {error === "link" && (
-        <p className="bg-warning/10 text-foreground mb-4 rounded-xl px-4 py-3 text-sm" role="alert">
+        <p className="border-warning text-foreground mb-6 border-l-2 py-1 pl-3 text-sm" role="alert">
           That sign-in link has expired or was already used. Enter your email to get a new one.
         </p>
       )}

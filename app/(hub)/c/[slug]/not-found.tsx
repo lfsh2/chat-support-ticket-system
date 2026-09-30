@@ -1,17 +1,27 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shell/empty-state";
 import { TopBar } from "@/components/shell/top-bar";
 
 export default function ChannelNotFound() {
   return (
     <>
       <TopBar title="Channel not found" />
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-        <p className="text-[15px]">This channel doesn&apos;t exist, or it isn&apos;t part of your membership.</p>
-        <Button nativeButton={false} render={<Link href="/c/general" />} className="h-11 px-4">
-          Go to #general
-        </Button>
-      </div>
+      <EmptyState
+        eyebrow="Hmm"
+        title="We can't find that channel."
+        action={
+          <Button
+            nativeButton={false}
+            render={<Link href="/c/general" />}
+            className="bg-ink text-background hover:bg-ink/90 h-11 cursor-pointer px-5 font-semibold"
+          >
+            Go to #general
+          </Button>
+        }
+      >
+        It may have been renamed, or it isn&apos;t part of your membership.
+      </EmptyState>
     </>
   );
 }

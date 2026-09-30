@@ -14,7 +14,10 @@
   --color-warning: var(--warning);
   --text-message: 0.9375rem;
   --text-message--line-height: 1.5;
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-newsreader);
+  --font-display: var(--font-newsreader);
+  --color-rule: var(--rule);
+  --color-ink: var(--ink);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -81,7 +84,9 @@
   --chart-3: #1F7A55;
   --chart-4: #B7791F;
   --chart-5: #5B6475;
-  --radius: 0.75rem;
+  --radius: 0.625rem;
+  --rule: #E4E0D5;
+  --ink: #131C33;
   /* Sidebar stays dark in both modes, like Slack */
   --sidebar: #131C33;
   --sidebar-foreground: #C9D1E3;
@@ -89,11 +94,13 @@
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #1F2A47;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #222C47;
+  --sidebar-border: #131C33;
   --sidebar-ring: #5B82FF;
 }
 
 .dark {
+  --rule: #1F2940;
+  --ink: #E8ECF4;
   --background: #0E1526;
   --foreground: #E8ECF4;
   --card: #141C30;
@@ -127,7 +134,7 @@
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #18213A;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #1A2338;
+  --sidebar-border: #0A1020;
   --sidebar-ring: #5B82FF;
 }
 
@@ -158,5 +165,42 @@
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- Studio notebook ------------------------------------------------------ */
+
+/* Faint paper grain on the reading surface. Static SVG noise, no JS, no layout cost. */
+@utility paper {
+  background-color: var(--background);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.12 0 0 0 0 0.2 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Margin-note typography: italic display serif. */
+@utility note {
+  font-family: var(--font-newsreader);
+  font-style: italic;
+  font-optical-sizing: auto;
+  letter-spacing: -0.005em;
+}
+
+/* Recolours sidebar tokens to paper, so ChannelNav can sit on a light page (mobile Chat tab). */
+@utility on-paper {
+  --sidebar: transparent;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent: var(--muted);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-ring: var(--ring);
+  --badge-ink: var(--background);
+}
+
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-optical-sizing: auto;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 22%, transparent);
   }
 }

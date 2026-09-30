@@ -78,17 +78,17 @@ export function Composer({
 
   return (
     <form
-      className="bg-background shrink-0 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-5 md:pb-4"
+      className="shrink-0 px-3 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-6 md:pb-5"
       onSubmit={(e) => {
         e.preventDefault();
         submit();
       }}
     >
-      <div className="bg-card focus-within:border-ring focus-within:ring-ring/30 rounded-xl border transition-shadow focus-within:ring-3">
+      <div className="bg-card border-rule focus-within:border-foreground/35 rounded-xl border transition-colors duration-200">
         {files.length > 0 && (
           <ul className="flex flex-wrap gap-2 px-2 pt-2" aria-label="Attachments to send">
             {files.map((f, i) => (
-              <li key={`${f.name}-${i}`} className="bg-muted flex max-w-52 items-center gap-2 rounded-lg py-1 pr-1 pl-2 text-sm">
+              <li key={`${f.name}-${i}`} className="border-rule flex max-w-52 items-center gap-2 rounded-md border py-1 pr-1 pl-2 text-sm">
                 <FileText className="text-muted-foreground size-4 shrink-0" aria-hidden />
                 <span className="truncate">{f.name}</span>
                 <Button
@@ -109,7 +109,7 @@ export function Composer({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-11 shrink-0 rounded-lg"
+            className="text-muted-foreground hover:text-foreground size-11 shrink-0 cursor-pointer rounded-lg"
             onClick={() => fileInput.current?.click()}
             aria-label="Attach files"
           >
@@ -152,7 +152,9 @@ export function Composer({
           <Button
             type="submit"
             size="icon"
-            className="size-11 shrink-0 rounded-lg"
+            // Empty: a quiet outline, not a washed-out blue block. Ready: solid ink.
+            className="data-[ready=false]:text-muted-foreground data-[ready=true]:bg-ink data-[ready=true]:text-background data-[ready=true]:hover:bg-ink/90 size-11 shrink-0 cursor-pointer rounded-lg transition-colors duration-150 disabled:opacity-100 data-[ready=false]:bg-transparent"
+            data-ready={canSend}
             disabled={!canSend}
             aria-label="Send message"
           >
@@ -166,8 +168,8 @@ export function Composer({
 
 export function ReadOnlyNotice({ channelName }: { channelName: string }) {
   return (
-    <div className="text-muted-foreground flex shrink-0 items-center gap-2 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sm md:px-5">
-      <Megaphone className="size-4 shrink-0" aria-hidden />
+    <div className="border-rule text-muted-foreground mx-3 mb-[max(0.75rem,env(safe-area-inset-bottom))] flex shrink-0 items-start gap-2.5 border-t pt-3 text-sm md:mx-6 md:mb-5">
+      <Megaphone className="mt-0.5 size-4 shrink-0" aria-hidden />
       <p>Only the team posts in #{channelName}. You can react to any post with an emoji.</p>
     </div>
   );

@@ -52,7 +52,7 @@ function EmojiRow({ onReact, size = "md" }: { onReact: (emoji: string) => void; 
 /** Desktop: floating toolbar shown on hover/focus. */
 export function MessageToolbar({ canEdit, canDelete, onReact, onCopy, onEdit, onDelete }: MessageActionHandlers) {
   return (
-    <div className="bg-popover absolute -top-4 right-3 z-10 hidden items-center rounded-lg border p-0.5 opacity-0 transition-opacity group-focus-within/message:opacity-100 group-hover/message:opacity-100 md:flex has-data-popup-open:opacity-100 has-aria-expanded:opacity-100">
+    <div className="bg-card border-rule absolute -top-4 right-4 z-10 hidden items-center rounded-md border p-0.5 opacity-0 md:right-6 transition-opacity group-focus-within/message:opacity-100 group-hover/message:opacity-100 md:flex has-data-popup-open:opacity-100 has-aria-expanded:opacity-100">
       {QUICK_REACTIONS.slice(0, 3).map((emoji) => (
         <Button key={emoji} variant="ghost" size="icon-sm" onClick={() => onReact(emoji)} aria-label={`React with ${emoji}`}>
           <span className="text-base">{emoji}</span>

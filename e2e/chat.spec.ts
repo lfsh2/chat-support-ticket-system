@@ -22,7 +22,7 @@ test("two browsers see each other's messages and reactions instantly", async ({ 
   const b = await userPage(browser, "both@example.com", { width: 1280, height: 800 });
   await a.goto("/c/general");
   await b.goto("/c/general");
-  await expect(b.getByRole("heading", { name: "Welcome to #general" })).toBeVisible();
+  await expect(b.getByRole("heading", { name: "The start of #general" })).toBeVisible();
 
   const text = unique("Hello from Casey");
   await send(a, text);

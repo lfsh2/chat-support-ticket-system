@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Figtree } from "next/font/google";
+import { Figtree, Newsreader } from "next/font/google";
 import { Providers } from "@/components/shell/providers";
 import { APP_NAME } from "@/lib/config";
 import "./globals.css";
@@ -7,6 +7,14 @@ import "./globals.css";
 const figtree = Figtree({
   variable: "--font-sans",
   subsets: ["latin"],
+});
+
+// Display serif for headings, channel names and margin notes. Body/UI stays Figtree.
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  axes: ["opsz"],
 });
 
 export const metadata: Metadata = {
@@ -26,7 +34,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${figtree.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${figtree.variable} ${newsreader.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-dvh flex flex-col">
         <Providers>{children}</Providers>
       </body>

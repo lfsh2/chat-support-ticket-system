@@ -22,7 +22,7 @@ export function ReactionBar({
   }
 
   return (
-    <div className="mt-1.5 flex flex-wrap gap-1.5">
+    <div className="mt-2 flex flex-wrap gap-1.5">
       {[...grouped].map(([emoji, { count, mine }]) => (
         <button
           key={emoji}
@@ -31,11 +31,14 @@ export function ReactionBar({
           aria-pressed={mine}
           aria-label={`${emoji} ${count} ${count === 1 ? "reaction" : "reactions"}${mine ? ", including you" : ""}`}
           className={cn(
-            "animate-in zoom-in-90 flex h-8 min-w-11 items-center justify-center gap-1 rounded-full border px-2.5 text-sm tabular-nums transition-colors duration-150 motion-reduce:animate-none",
-            mine ? "border-primary/40 bg-primary/10 text-primary" : "bg-muted/60 hover:bg-muted border-transparent",
+            // 30px chip, 44px hit area via the pseudo-element.
+            "animate-in zoom-in-90 relative flex h-[30px] min-w-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-[13px] font-semibold tabular-nums transition-colors duration-150 before:absolute before:-inset-y-[7px] before:inset-x-0 motion-reduce:animate-none",
+            mine
+              ? "border-primary/50 bg-primary/[0.07] text-primary"
+              : "border-rule bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground",
           )}
         >
-          <span aria-hidden>{emoji}</span>
+          <span aria-hidden className="text-[15px] leading-none">{emoji}</span>
           <span aria-hidden>{count}</span>
         </button>
       ))}

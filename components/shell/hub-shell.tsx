@@ -24,7 +24,7 @@ export function HubShell({
       <div className="fixed inset-x-0 top-(--app-top,0px) h-(--app-height,100dvh) overflow-hidden">
         <SidebarProvider className="h-full min-h-0">
           <AppSidebar />
-          <SidebarInset className="flex h-full min-h-0 min-w-0 flex-col">
+          <SidebarInset className="paper flex h-full min-h-0 min-w-0 flex-col">
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>
             <BottomTabs />
           </SidebarInset>

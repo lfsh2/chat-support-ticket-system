@@ -17,7 +17,7 @@ export default function AccessEndedPage() {
         <Button
           nativeButton={false}
           render={<a href={`mailto:${SUPPORT_EMAIL}?subject=Renew%20my%20membership`} />}
-          className="h-12 rounded-xl text-base"
+          className="bg-ink text-background hover:bg-ink/90 h-12 rounded-xl text-base font-semibold"
         >
           Renew my membership
         </Button>

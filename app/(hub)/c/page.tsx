@@ -1,4 +1,4 @@
-import { MessagesSquare } from "lucide-react";
+import { EmptyState } from "@/components/shell/empty-state";
 import { TopBar } from "@/components/shell/top-bar";
 import { MobileChannelList } from "./mobile-channel-list";
 
@@ -6,11 +6,12 @@ import { MobileChannelList } from "./mobile-channel-list";
 export default function ChannelsIndex() {
   return (
     <>
-      <TopBar title="Chat" showMenu={false} className="md:hidden" />
+      <TopBar title="Channels" showMenu={false} className="md:hidden" />
       <MobileChannelList />
-      <div className="text-muted-foreground hidden flex-1 flex-col items-center justify-center gap-3 p-8 text-center md:flex">
-        <MessagesSquare className="size-10 opacity-50" aria-hidden />
-        <p className="text-[15px]">Pick a channel on the left to start chatting.</p>
+      <div className="hidden flex-1 md:flex">
+        <EmptyState eyebrow="Chat" title="Pick a channel to start.">
+          Channels are grouped by program on the left. Everyone can see the ones at the top.
+        </EmptyState>
       </div>
     </>
   );
