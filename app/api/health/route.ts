@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { DEMO_OFFLINE } from "@/lib/demo/config";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,9 @@ export const dynamic = "force-dynamic";
  * the database answers, so a blank "Internal Server Error" can be traced quickly.
  */
 export async function GET() {
+  if (DEMO_OFFLINE) {
+    return NextResponse.json({ ok: true, mode: "offline demo (in-memory sample data, resets on restart)" });
+  }
   const env = {
     NEXT_PUBLIC_APP_URL: Boolean(process.env.NEXT_PUBLIC_APP_URL),
     NEXT_PUBLIC_SUPABASE_URL: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),

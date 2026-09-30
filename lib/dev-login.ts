@@ -1,5 +1,6 @@
 import "server-only";
 import { timingSafeEqual } from "node:crypto";
+import { DEMO_OFFLINE } from "@/lib/demo/config";
 
 /**
  * One-click sign-in for local development. Every condition must hold, so it can never
@@ -37,7 +38,7 @@ export function publicDemoEnabled(): boolean {
 }
 
 export function canUseDevLogin(key?: string | null): boolean {
-  return devLoginEnabled() || publicDemoEnabled() || demoKeyValid(key);
+  return devLoginEnabled() || publicDemoEnabled() || DEMO_OFFLINE || demoKeyValid(key);
 }
 
 export const DEV_USERS = [
@@ -53,6 +54,15 @@ export const DEV_USERS = [
 export async function signInAsDevUser(email: string, key?: string | null) {
   if (!canUseDevLogin(key)) throw new Error("Dev login is disabled.");
   if (!DEV_USERS.some((u) => u.email === email)) throw new Error("Not a seeded dev user.");
+
+  if (DEMO_OFFLINE) {
+    const { demoUserByEmail } = await import("@/lib/demo/store");
+    const { setDemoUser } = await import("@/lib/demo/server");
+    const user = demoUserByEmail(email);
+    if (!user) throw new Error("Demo user not found.");
+    await setDemoUser(user.id);
+    return;
+  }
 
   const { createAdminClient, createClient } = await import("@/lib/supabase/server");
   const { data, error } = await createAdminClient().auth.admin.generateLink({ type: "magiclink", email });
