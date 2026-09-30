@@ -15,19 +15,22 @@ test("signed-out visitors are sent to /login", async ({ page }) => {
 
 test("CoachOS-only member sees CoachOS and shared channels, not Alive & Free", async ({ page }) => {
   await signInAs(page, "coachos@example.com");
-  const nav = page.getByRole("navigation", { name: "Channels" });
-  await expect(nav.getByText("coachos-help")).toBeVisible();
-  await expect(nav.getByText("general")).toBeVisible();
-  await expect(nav.getByText("community")).toHaveCount(0);
-  await expect(nav.getByText("resources")).toHaveCount(0);
-  await page.screenshot({ path: "test-results/hub-coachos-390.png", fullPage: true });
+  await expect(page).toHaveURL(/\/c\/general$/);
+  await page.goto("/c");
+  await expect(page.getByRole("link", { name: /^coachos-help/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^general/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^community/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^resources/ })).toHaveCount(0);
+  // Direct URL to another program's channel is a friendly 404, not a leak.
+  await page.goto("/c/community");
+  await expect(page.getByText("isn't part of your membership")).toBeVisible();
 });
 
 test("Alive & Free member does not see CoachOS channels", async ({ page }) => {
   await signInAs(page, "alivefree@example.com");
-  const nav = page.getByRole("navigation", { name: "Channels" });
-  await expect(nav.getByText("community")).toBeVisible();
-  await expect(nav.getByText("coachos-help")).toHaveCount(0);
+  await page.goto("/c");
+  await expect(page.getByRole("link", { name: /^community/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^coachos-help/ })).toHaveCount(0);
 });
 
 test("lapsed members are turned away at the door", async ({ page }) => {
@@ -39,7 +42,8 @@ test("lapsed members are turned away at the door", async ({ page }) => {
 
 test("staff can sign in without a membership", async ({ page }) => {
   await signInAs(page, "agent@example.com");
-  await expect(page.getByText("Staff: agent")).toBeVisible();
+  await page.goto("/me");
+  await expect(page.getByText("You're on the team")).toBeVisible();
 });
 
 test("a membership that lapses mid-session redirects to /access-ended", async ({ page }) => {
@@ -53,7 +57,7 @@ test("a membership that lapses mid-session redirects to /access-ended", async ({
     });
 
   await signInAs(page, "coachos@example.com");
-  await expect(page.getByRole("navigation", { name: "Channels" })).toBeVisible();
+  await expect(page).toHaveURL(/\/c\/general$/);
   try {
     await setStatus("canceled");
     await page.reload();

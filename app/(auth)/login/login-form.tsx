@@ -40,6 +40,8 @@ export function LoginForm({ next }: { next?: string }) {
       <Field data-invalid={error ? true : undefined}>
         <FieldLabel htmlFor="email">Email</FieldLabel>
         <Input
+          // Remount when the server echoes the email back, so defaultValue stays uncontrolled.
+          key={state.status === "error" ? `err:${state.email}` : "idle"}
           id="email"
           name="email"
           type="email"

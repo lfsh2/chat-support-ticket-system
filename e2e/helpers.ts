@@ -15,8 +15,11 @@ export async function signInAs(page: Page, email: string) {
   const before = await inboxIds(email);
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByRole("button", { name: "Email me a sign-in link" }).click();
-  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+  // Supabase allows one link per address per second; tests sign the same people in back to back.
+  await expect(async () => {
+    await page.getByRole("button", { name: "Email me a sign-in link" }).click();
+    await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000, intervals: [1_000] });
 
   let link: string | undefined;
   await expect

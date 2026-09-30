@@ -69,7 +69,8 @@ export async function requestMagicLink(_prev: LoginState, formData: FormData): P
     },
   });
   if (error) {
-    const message = /rate|seconds/i.test(error.message)
+    console.warn("signInWithOtp failed:", error.status, error.code, error.message);
+    const message = error.status === 429 || /rate limit|after \d+ seconds/i.test(error.message)
       ? "We just sent you a link. Please wait a minute before asking for another."
       : "We couldn't send your sign-in link. Please try again.";
     return { status: "error", message, email };

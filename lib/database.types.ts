@@ -277,6 +277,11 @@ isOneToOne: false
 "can_see_ticket":
 { Args: { "tid": string }; Returns: boolean
                            },
+"channel_unread_counts":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "channel_id": string,"unread": number
+            }[]
+                           },
 "has_any_access":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
@@ -288,6 +293,9 @@ isOneToOne: false
                            },
 "is_staff":
 { Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"mark_channel_read":
+{ Args: { "cid": string }; Returns: undefined
                            }
           }
           Enums: {

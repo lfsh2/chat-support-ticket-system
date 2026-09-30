@@ -18,8 +18,19 @@ for (const width of [390, 1280]) {
       await page.goto("/login");
       await page.screenshot({ path: `test-results/screens/login-${width}-${scheme}.png` });
       await signInAs(page, EMAILS[`${width}-${scheme}`]);
-      await page.getByRole("navigation", { name: "Channels" }).waitFor();
-      await page.screenshot({ path: `test-results/screens/hub-${width}-${scheme}.png`, fullPage: true });
+      await page.getByRole("button", { name: "Send message" }).waitFor();
+      await page.screenshot({ path: `test-results/screens/channel-${width}-${scheme}.png` });
+      if (width === 390) {
+        await page.getByRole("button", { name: "Open channels" }).click();
+        await page.getByRole("link", { name: /^wins/ }).waitFor();
+        await page.waitForTimeout(500); // let the sheet finish sliding in
+        await page.screenshot({ path: `test-results/screens/sheet-${width}-${scheme}.png` });
+        await page.keyboard.press("Escape");
+        await page.goto("/c");
+        await page.screenshot({ path: `test-results/screens/chat-tab-${width}-${scheme}.png` });
+      }
+      await page.goto("/me");
+      await page.screenshot({ path: `test-results/screens/me-${width}-${scheme}.png` });
     });
   }
 }
