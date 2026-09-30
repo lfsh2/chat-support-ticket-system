@@ -1,4 +1,4 @@
-import { format, isThisYear, isToday, isYesterday } from "date-fns";
+import { dayLabel } from "@/lib/time";
 
 /** "New" marker: a blue hairline with a small label hung on the right. */
 export function UnreadDivider() {
@@ -15,12 +15,8 @@ export function UnreadDivider() {
 }
 
 /** Day marker written like a margin note: italic serif, ruled line trailing off. */
-export function DateDivider({ date }: { date: Date }) {
-  const label = isToday(date)
-    ? "Today"
-    : isYesterday(date)
-      ? "Yesterday"
-      : format(date, isThisYear(date) ? "EEEE, MMMM d" : "MMMM d, yyyy");
+export function DateDivider({ date, timeZone }: { date: Date; timeZone: string }) {
+  const label = dayLabel(date, timeZone);
   return (
     <div
       className="paper sticky top-0 z-[5] mt-5 mb-1 flex items-center gap-3 px-4 py-1 md:px-6"

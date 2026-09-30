@@ -20,6 +20,7 @@ export default async function HubLayout({ children }: LayoutProps<"/">) {
         display_name: profile.display_name,
         avatar_url: profile.avatar_url,
         role: profile.role,
+        timezone: profile.timezone,
       }}
       channels={channels ?? []}
       initialUnread={Object.fromEntries((unread ?? []).map((r) => [r.channel_id, r.unread]))}

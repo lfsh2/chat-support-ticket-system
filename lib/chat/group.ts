@@ -1,4 +1,4 @@
-import { isSameDay } from "date-fns";
+import { dayKey } from "@/lib/time";
 import type { ChatMessage } from "./types";
 
 export const GROUP_WINDOW_MS = 5 * 60 * 1000;
@@ -14,8 +14,9 @@ export type ListItem =
  */
 export function buildListItems(
   messages: ChatMessage[],
-  opts: { unreadAfter?: Date | null; currentUserId?: string } = {},
+  opts: { unreadAfter?: Date | null; currentUserId?: string; timeZone?: string } = {},
 ): ListItem[] {
+  const tz = opts.timeZone ?? "UTC";
   const items: ListItem[] = [];
   let prev: ChatMessage | undefined;
   let unreadPlaced = false;
@@ -25,8 +26,8 @@ export function buildListItems(
     const prevAt = prev ? new Date(prev.created_at ?? 0) : undefined;
     let breakGroup = !prev;
 
-    if (!prevAt || !isSameDay(prevAt, at)) {
-      items.push({ type: "date", key: `date-${at.toDateString()}`, date: at });
+    if (!prevAt || dayKey(prevAt, tz) !== dayKey(at, tz)) {
+      items.push({ type: "date", key: `date-${dayKey(at, tz)}`, date: at });
       breakGroup = true;
     }
 

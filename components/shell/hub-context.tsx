@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/database.types";
 
-export type HubProfile = Pick<Tables<"profiles">, "id" | "email" | "display_name" | "avatar_url" | "role">;
+export type HubProfile = Pick<Tables<"profiles">, "id" | "email" | "display_name" | "avatar_url" | "role" | "timezone">;
 export type HubChannel = Pick<Tables<"channels">, "id" | "slug" | "name" | "description" | "program" | "type" | "position">;
 export type UnreadCounts = Record<string, number>;
 

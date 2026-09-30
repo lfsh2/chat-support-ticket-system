@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useCallback, useState } from "react";
-import { format } from "date-fns";
 import { AlertCircle, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useLongPress } from "@/hooks/use-long-press";
 import { isStaffRole } from "@/lib/access";
 import { toPlainText } from "@/lib/markdown";
+import { formatTime, formatTimeShort } from "@/lib/time";
 import type { ChatMessage } from "@/lib/chat/types";
 import { cn } from "@/lib/utils";
 import { AttachmentPreview } from "./attachment-preview";
@@ -34,6 +34,7 @@ type Props = {
   isGroupStart: boolean;
   myId: string;
   iAmStaff: boolean;
+  timeZone: string;
   onReact: (message: ChatMessage, emoji: string) => void;
   onEdit: (id: string, body: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -82,6 +83,7 @@ export const MessageItem = memo(function MessageItem({
   isGroupStart,
   myId,
   iAmStaff,
+  timeZone,
   onReact,
   onEdit,
   onDelete,
@@ -133,7 +135,7 @@ export const MessageItem = memo(function MessageItem({
             dateTime={message.created_at ?? undefined}
             className="text-muted-foreground hidden pt-[3px] text-right text-[11px] leading-5 tabular-nums group-hover/message:block"
           >
-            {format(at, "h:mm")}
+            {formatTimeShort(at, timeZone)}
           </time>
         )}
       </div>
@@ -146,7 +148,7 @@ export const MessageItem = memo(function MessageItem({
               <span className="note text-muted-foreground text-[14px] leading-none">team</span>
             )}
             <time dateTime={message.created_at ?? undefined} className="text-muted-foreground text-xs tabular-nums">
-              {format(at, "h:mm a")}
+              {formatTime(at, timeZone)}
             </time>
           </div>
         )}

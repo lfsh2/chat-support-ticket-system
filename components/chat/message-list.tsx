@@ -15,6 +15,7 @@ type Props = {
   items: ListItem[];
   myId: string;
   iAmStaff: boolean;
+  timeZone: string;
   hasOlder: boolean;
   loadingOlder: boolean;
   loadOlder: () => void;
@@ -99,7 +100,7 @@ export const MessageList = forwardRef<MessageListHandle, Props>(function Message
           )}
           <div role="log" aria-label="Messages" aria-live="off">
             {items.map((item) => {
-              if (item.type === "date") return <DateDivider key={item.key} date={item.date} />;
+              if (item.type === "date") return <DateDivider key={item.key} date={item.date} timeZone={itemProps.timeZone} />;
               if (item.type === "unread") return <UnreadDivider key={item.key} />;
               return (
                 <MessageItem key={item.key} message={item.message} isGroupStart={item.isGroupStart} {...itemProps} />

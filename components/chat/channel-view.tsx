@@ -9,6 +9,7 @@ import { useChannelMessages } from "@/hooks/use-channel-messages";
 import { buildListItems } from "@/lib/chat/group";
 import { LAST_CHANNEL_COOKIE } from "@/lib/chat/last-channel";
 import { toPlainText } from "@/lib/markdown";
+import { safeTimeZone } from "@/lib/time";
 import type { ChatMessage } from "@/lib/chat/types";
 import { PROGRAMS } from "@/lib/config";
 import { Composer, ReadOnlyNotice } from "./composer";
@@ -26,6 +27,7 @@ export function ChannelView({
   lastReadAt: string | null;
 }) {
   const { profile, isStaff, setChannelRead } = useHub();
+  const timeZone = safeTimeZone(profile.timezone);
   const supabase = useMemo(() => createClient(), []);
   const me = useMemo(
     () => ({ id: profile.id, display_name: profile.display_name, avatar_url: profile.avatar_url, role: profile.role }),
@@ -37,8 +39,8 @@ export function ChannelView({
   // The "New messages" divider stays where it was when you opened the channel.
   const [unreadAfter] = useState(() => (lastReadAt ? new Date(lastReadAt) : null));
   const items = useMemo(
-    () => buildListItems(chat.messages, { unreadAfter, currentUserId: profile.id }),
-    [chat.messages, unreadAfter, profile.id],
+    () => buildListItems(chat.messages, { unreadAfter, currentUserId: profile.id, timeZone }),
+    [chat.messages, unreadAfter, profile.id, timeZone],
   );
 
   // Remember this channel for "/".
@@ -127,6 +129,7 @@ export function ChannelView({
         items={items}
         myId={profile.id}
         iAmStaff={isStaff}
+        timeZone={timeZone}
         hasOlder={Boolean(chat.hasOlder)}
         loadingOlder={chat.loadingOlder}
         loadOlder={() => void chat.loadOlder()}
