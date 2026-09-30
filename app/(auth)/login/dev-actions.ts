@@ -4,6 +4,6 @@ import { redirect } from "next/navigation";
 import { signInAsDevUser } from "@/lib/dev-login";
 
 export async function devSignIn(formData: FormData) {
-  await signInAsDevUser(String(formData.get("email") ?? ""));
+  await signInAsDevUser(String(formData.get("email") ?? ""), String(formData.get("key") ?? "") || null);
   redirect("/");
 }

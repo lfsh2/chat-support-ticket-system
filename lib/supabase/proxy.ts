@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/lib/database.types";
 
-const PUBLIC_PATHS = ["/login", "/auth", "/access-ended", "/api/webhooks", "/api/cron"];
+const PUBLIC_PATHS = ["/login", "/auth", "/access-ended", "/api/webhooks", "/api/cron", "/api/health"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -11,6 +11,12 @@ function isPublic(pathname: string) {
 /** Refreshes the Supabase session cookie and sends signed-out visitors to /login. */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  // Misconfigured deploy: let public pages (login, /api/health) render instead of a blank 500.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error("Supabase env vars are missing — see /api/health");
+    return isPublic(request.nextUrl.pathname) ? response : NextResponse.redirect(new URL("/api/health", request.url));
+  }
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

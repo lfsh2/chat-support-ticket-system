@@ -25,8 +25,8 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r-0">
       <SidebarHeader className="px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-2">
-        <Link href="/" onClick={close} className="flex h-10 items-center text-white">
-          <Wordmark className="text-[20px]" />
+        <Link href="/" onClick={close} className="flex min-h-12 items-center text-white">
+          <Wordmark />
         </Link>
       </SidebarHeader>
 

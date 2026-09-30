@@ -1,4 +1,5 @@
 import "server-only";
+import { timingSafeEqual } from "node:crypto";
 
 /**
  * One-click sign-in for local development. Every condition must hold, so it can never
@@ -13,6 +14,23 @@ export function devLoginEnabled(): boolean {
   );
 }
 
+/**
+ * Demo mode for showing the hub on a live URL: set DEMO_LOGIN_KEY (16+ random chars) on the
+ * server and share links carrying ?key=… Only the seeded @example.com users can be used, so it
+ * never grants access to a real client's account. Unset the variable to turn it off.
+ */
+export function demoKeyValid(key: string | null | undefined): boolean {
+  const expected = process.env.DEMO_LOGIN_KEY ?? "";
+  if (expected.length < 16 || !key) return false;
+  const a = Buffer.from(key);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+export function canUseDevLogin(key?: string | null): boolean {
+  return devLoginEnabled() || demoKeyValid(key);
+}
+
 export const DEV_USERS = [
   { slug: "coachos", email: "coachos@example.com", label: "Casey", note: "CoachOS member" },
   { slug: "alivefree", email: "alivefree@example.com", label: "Alex", note: "Alive & Free member" },
@@ -23,8 +41,8 @@ export const DEV_USERS = [
 ] as const;
 
 /** Signs the current request in as a seeded user by minting and verifying a magic-link token. */
-export async function signInAsDevUser(email: string) {
-  if (!devLoginEnabled()) throw new Error("Dev login is disabled.");
+export async function signInAsDevUser(email: string, key?: string | null) {
+  if (!canUseDevLogin(key)) throw new Error("Dev login is disabled.");
   if (!DEV_USERS.some((u) => u.email === email)) throw new Error("Not a seeded dev user.");
 
   const { createAdminClient, createClient } = await import("@/lib/supabase/server");

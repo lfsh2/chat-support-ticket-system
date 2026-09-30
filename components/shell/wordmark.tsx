@@ -1,15 +1,37 @@
-import { APP_NAME } from "@/lib/config";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-/** Serif wordmark with the two program ticks. Replaces a generic letter-in-a-tile logo. */
-export function Wordmark({ className }: { className?: string }) {
+/**
+ * Alive + Free mark: the line-art heart plus the lowercase, letter-spaced
+ * "alive + free" from the brand logo, with the product name set small beneath.
+ * `tone="light"` inverts the black line art for dark (navy) backgrounds.
+ */
+export function Wordmark({
+  className,
+  tone = "light",
+  showProduct = true,
+}: {
+  className?: string;
+  tone?: "light" | "dark";
+  showProduct?: boolean;
+}) {
   return (
-    <span className={cn("inline-flex items-baseline gap-2 font-display text-[22px] leading-none tracking-tight", className)}>
-      {APP_NAME}
-      <span className="inline-flex translate-y-[-0.1em] gap-[3px]" aria-hidden>
-        <span className="bg-accent-af h-[0.7em] w-[3px] rounded-full" />
-        <span className="bg-accent-coachos h-[0.7em] w-[3px] rounded-full" />
+    <span className={cn("inline-flex items-center gap-2.5", className)}>
+      <Image
+        src="/brand/alive-free-heart.png"
+        alt=""
+        width={40}
+        height={40}
+        priority
+        className={cn("size-12 shrink-0 scale-125", tone === "light" ? "invert" : "dark:invert")}
+      />
+      <span className="flex flex-col leading-none">
+        <span className="text-[19px] font-light tracking-[0.18em] lowercase">alive + free</span>
+        {showProduct && (
+          <span className="note mt-1 text-[13px] tracking-normal opacity-70">Client Hub</span>
+        )}
       </span>
+      <span className="sr-only">Alive + Free Client Hub</span>
     </span>
   );
 }

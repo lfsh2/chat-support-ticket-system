@@ -1,4 +1,4 @@
-import { PROGRAMS, SUPPORT_EMAIL } from "@/lib/config";
+import { ORG_NAME, PROGRAMS, SUPPORT_EMAIL } from "@/lib/config";
 import { Wordmark } from "@/components/shell/wordmark";
 
 /**
@@ -36,7 +36,7 @@ export function AuthCard({
           </ul>
         </div>
         <p className="text-sidebar-foreground/60 hidden text-xs md:block">
-          Questions about access? <a className="underline underline-offset-2 hover:text-white" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+          {ORG_NAME} · Questions about access? <a className="underline underline-offset-2 hover:text-white" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
         </p>
       </section>
 
