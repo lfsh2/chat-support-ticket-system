@@ -12,3 +12,9 @@ test("dev panel still respects membership rules", async ({ page }) => {
   await page.getByRole("button", { name: /Lee/ }).click();
   await expect(page).toHaveURL(/\/access-ended$/);
 });
+
+test("direct dev link signs in and honours next", async ({ page }) => {
+  await page.goto("/auth/dev?as=both&next=/c/community");
+  await expect(page).toHaveURL(/\/c\/community$/);
+  await expect(page.getByRole("button", { name: "Send message" })).toBeVisible();
+});

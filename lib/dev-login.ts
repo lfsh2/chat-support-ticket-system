@@ -14,10 +14,27 @@ export function devLoginEnabled(): boolean {
 }
 
 export const DEV_USERS = [
-  { email: "coachos@example.com", label: "Casey", note: "CoachOS member" },
-  { email: "alivefree@example.com", label: "Alex", note: "Alive & Free member" },
-  { email: "both@example.com", label: "Bailey", note: "Both programs" },
-  { email: "agent@example.com", label: "Jon", note: "Support agent" },
-  { email: "owner@example.com", label: "Sammi", note: "Owner" },
-  { email: "lapsed@example.com", label: "Lee", note: "Lapsed (sees access-ended)" },
+  { slug: "coachos", email: "coachos@example.com", label: "Casey", note: "CoachOS member" },
+  { slug: "alivefree", email: "alivefree@example.com", label: "Alex", note: "Alive & Free member" },
+  { slug: "both", email: "both@example.com", label: "Bailey", note: "Both programs" },
+  { slug: "agent", email: "agent@example.com", label: "Jon", note: "Support agent" },
+  { slug: "owner", email: "owner@example.com", label: "Sammi", note: "Owner" },
+  { slug: "lapsed", email: "lapsed@example.com", label: "Lee", note: "Lapsed (sees access-ended)" },
 ] as const;
+
+/** Signs the current request in as a seeded user by minting and verifying a magic-link token. */
+export async function signInAsDevUser(email: string) {
+  if (!devLoginEnabled()) throw new Error("Dev login is disabled.");
+  if (!DEV_USERS.some((u) => u.email === email)) throw new Error("Not a seeded dev user.");
+
+  const { createAdminClient, createClient } = await import("@/lib/supabase/server");
+  const { data, error } = await createAdminClient().auth.admin.generateLink({ type: "magiclink", email });
+  if (error || !data.properties?.hashed_token) throw new Error(error?.message ?? "Couldn't create a dev link.");
+
+  const supabase = await createClient();
+  const { error: verifyError } = await supabase.auth.verifyOtp({
+    type: "magiclink",
+    token_hash: data.properties.hashed_token,
+  });
+  if (verifyError) throw new Error(verifyError.message);
+}
