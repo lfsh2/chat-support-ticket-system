@@ -10,12 +10,17 @@ export function DevLoginPanel({ demoKey }: { demoKey?: string }) {
       <h2 id="dev-login-h" className="note text-[15px]">
         {isDemo ? "Demo · sign in as a test user" : "Dev only · sign in as"}
       </h2>
+      {isDemo && (
+        <p className="text-muted-foreground mt-1 text-xs">
+          Pick anyone to look around. Each person sees the hub the way that kind of member would.
+        </p>
+      )}
       <ul className="mt-3 grid grid-cols-2 gap-2">
         {DEV_USERS.map((u) => (
           <li key={u.email}>
             <form action={devSignIn}>
               <input type="hidden" name="email" value={u.email} />
-              {isDemo && <input type="hidden" name="key" value={demoKey} />}
+              {isDemo && demoKey && <input type="hidden" name="key" value={demoKey} />}
               <button
                 type="submit"
                 className="border-rule hover:border-foreground/30 bg-card flex min-h-12 w-full cursor-pointer flex-col items-start rounded-lg border px-3 py-2 text-left transition-colors"

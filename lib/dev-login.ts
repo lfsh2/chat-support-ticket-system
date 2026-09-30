@@ -27,8 +27,17 @@ export function demoKeyValid(key: string | null | undefined): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/**
+ * Open demo: DEMO_MODE=true shows the "sign in as a test user" panel to everyone on /login.
+ * For a demo deployment only — anyone with the URL can get in as a test user. Turn it off
+ * (unset the variable) before real clients are invited.
+ */
+export function publicDemoEnabled(): boolean {
+  return process.env.DEMO_MODE === "true";
+}
+
 export function canUseDevLogin(key?: string | null): boolean {
-  return devLoginEnabled() || demoKeyValid(key);
+  return devLoginEnabled() || publicDemoEnabled() || demoKeyValid(key);
 }
 
 export const DEV_USERS = [

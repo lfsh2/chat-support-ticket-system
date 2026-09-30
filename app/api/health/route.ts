@@ -14,6 +14,7 @@ export async function GET() {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
     DEMO_LOGIN_KEY: (process.env.DEMO_LOGIN_KEY ?? "").length >= 16,
+    DEMO_MODE: process.env.DEMO_MODE === "true",
   };
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const supabaseIsLocal = /127\.0\.0\.1|localhost/.test(url);
@@ -35,7 +36,7 @@ export async function GET() {
     database = `error: ${err instanceof Error ? err.message : String((err as { message?: string })?.message ?? err)}`;
   }
 
-  const ok = Object.entries(env).every(([k, v]) => v || k === "DEMO_LOGIN_KEY") && !supabaseIsLocal && database === "ok";
+  const ok = Object.entries(env).every(([k, v]) => v || k.startsWith("DEMO_")) && !supabaseIsLocal && database === "ok";
   return NextResponse.json(
     {
       ok,
