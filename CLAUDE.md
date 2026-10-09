@@ -43,8 +43,8 @@ Working product name: **Client Hub**. Keep it in one config constant so we can r
 | Forms / validation | react-hook-form + zod (via shadcn `form`) |
 | Data fetching | Server Components + Server Actions; TanStack Query for client-side chat cache |
 | Toasts | shadcn `sonner` |
-| Dates | date-fns |
-| Deploy | Vercel |
+| Dates | `Intl` helpers in `lib/time.ts` (always formatted in the member's profile timezone) |
+| Deploy | DigitalOcean App Platform (app) + hosted Supabase (data, auth, realtime, storage) — see `docs/DEPLOY.md` |
 | Optional | GoHighLevel webhook sync (tags) — Phase 6 |
 
 Use `pnpm`. No other UI kits (no MUI, Chakra, etc.).
@@ -400,6 +400,11 @@ create table stripe_price_map (         -- which Stripe price unlocks which prog
 
 Triggers: update `reply_count`; bump `tickets.updated_at`; set `first_response_at` on first staff message; create `notifications` rows for mentions/thread replies/ticket updates; link `memberships.user_id` on profile creation by email.
 
+**Added beyond the original spec** (see `supabase/migrations/2026100900000*`):
+- `tasks` — internal team tasks (staff-only RLS): status `todo | in_progress | done`, priority, assignee, due date, optional `ticket_id`.
+- `events` — dashboard calendar: program-scoped (null = everyone), staff write, members read their programs.
+- Ticket RPCs/triggers: `open_ticket()` (atomic, 5/hour rate limit), `rate_ticket()`, system events on status/assignee/priority changes, client reply reopens, first staff reply opens, members can't reply on `closed`.
+
 ---
 
 ## 8. Access control via Stripe
@@ -415,7 +420,7 @@ Triggers: update `reply_count`; bump `tickets.updated_at`; set `first_response_a
 
 - One-time payments (e.g., coaching packages) grant access for a configurable period (`ACCESS_DAYS_ONE_TIME`, default 365).
 - `manual` memberships (set in admin) never expire unless revoked.
-- A daily cron (`/api/cron/memberships`, Vercel Cron) sweeps expired grace periods and one-time access.
+- A daily cron (`/api/cron/memberships`, triggered by a DigitalOcean scheduled job or Supabase `pg_cron`) sweeps expired grace periods and one-time access.
 - Send a welcome email with a magic-link sign-in when a new membership is created.
 
 ---
@@ -429,15 +434,15 @@ Triggers: update `reply_count`; bump `tickets.updated_at`; set `first_response_a
 /                          → redirect to last visited channel (or #general)
 /c/[slug]                  channel
 /c/[slug]/t/[messageId]    thread (deep-linkable)
-/help                      my tickets + Get help
-/help/new                  new ticket (renders as drawer/dialog over /help)
-/help/[number]             ticket view
+/dashboard                 overview (role-aware) + calendar (?month=YYYY-MM)
+/dashboard/tickets         staff: queue (?view=…&program=…&priority=…) · members: my tickets (?new=1 opens Get help)
+/dashboard/tickets/[number] ticket view; staff get the workspace panel (status, assignee, notes, tasks)
+/dashboard/tasks           team task board (staff only; 404 for members)
+/help, /help/[number]      redirects to the dashboard (kept for old links/emails)
 /kb                        help articles
 /kb/[slug]                 article
 /inbox                     notifications
 /me                        profile & settings
-/admin                     queue (staff)
-/admin/tickets/[number]    staff ticket workspace
 /admin/members             member management
 /admin/channels            channel management
 /admin/articles            KB editor
@@ -458,7 +463,8 @@ app/
   (auth)/login, auth/callback, access-ended
   (hub)/layout.tsx          ← shell: Sidebar (desktop) / TopBar + BottomTabs (mobile)
   (hub)/c/[slug]/...
-  (hub)/help/...
+  (hub)/dashboard/...      ← overview, tickets, tasks; server actions co-located
+  (hub)/help/...            ← redirects only
   (hub)/kb/...
   (hub)/inbox, me
   (admin)/admin/...
@@ -469,8 +475,11 @@ components/
   chat/                     ← MessageList, MessageItem, MessageGroup, Composer,
                               ReactionBar, ThreadPanel, TypingIndicator, UnreadDivider,
                               MentionPopover, EmojiPicker, AttachmentPreview, MessageActions
-  tickets/                  ← NewTicketFlow, TicketHeader, TicketList, StatusBadge,
+  tickets/                  ← NewTicketFlow, TicketView, TicketPanel, ticket tags,
                               SatisfactionPrompt, SystemEvent
+  tasks/                    ← TaskBoard, TaskDialog, TaskLine
+  calendar/                 ← DashboardCalendar, EventDialog
+  dashboard/                ← DashboardNav, UnreadChannels
   admin/                    ← QueueTable, ClientPanel, SavedReplyPicker, ReportsCharts
   kb/
 emails/                     ← React Email templates
@@ -481,7 +490,11 @@ hooks/
   use-realtime-channel.ts, use-typing.ts, use-presence.ts,
   use-keyboard-inset.ts, use-long-press.ts, use-media-query.ts
 supabase/
-  migrations/, seed.sql
+  migrations/, seed.sql (local test data only), production.sql (channels + articles)
+scripts/
+  access.mjs                ← `pnpm access` grant/revoke/staff until the admin Members screen exists
+docs/
+  DEPLOY.md                 ← go-live steps
 ```
 
 ---
@@ -500,6 +513,11 @@ supabase/
 ---
 
 ## 12. Build phases & acceptance criteria
+
+> **Status (2026-10-09):** Phases 1–2 done. Phase 4 mostly done, plus a role-aware dashboard,
+> team task tracker and calendar (not in the original spec). Phase 4 still missing: KB suggestions
+> while typing, attachments in the new-ticket flow, auto-close after 14 days. Phases 3, 5, 6 not
+> started. Demo modes were removed for go-live; only local `DEV_LOGIN` remains.
 
 **Phase 1: Foundation**
 - Next.js + TS + Tailwind + shadcn initialized; theme tokens from §3; Figtree font; dark mode.
@@ -567,6 +585,8 @@ Create `.env.example` with these keys. Never commit real values.
 - After UI work, start the dev server and check the screen at 390px and 1280px.
 - Prefer Server Components; add `"use client"` only where interaction or realtime needs it.
 - Don't add new dependencies beyond §2 without saying why.
+- Never run `supabase/seed.sql` against production (it creates `@example.com` test users).
+- Checks: `pnpm typecheck`, `pnpm lint`, `pnpm test` (Vitest), `pnpm exec playwright test` (needs local Supabase + `DEV_LOGIN=true`). Run lint and typecheck one at a time — together with `next dev` they can run out of memory.
 - **Ask the owner before deciding:** final domain/subdomain, promised response time, which Stripe price IDs map to which program, whether members can DM each other (default: **no** — members only talk in channels and tickets), and whether the two programs should ever be split into separate portals.
 
 @AGENTS.md
