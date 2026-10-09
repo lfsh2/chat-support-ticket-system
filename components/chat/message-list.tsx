@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ListItem } from "@/lib/chat/group";
 import type { ChatMessage } from "@/lib/chat/types";
+import { SystemEvent } from "@/components/tickets/system-event";
 import { MessageItem } from "./message-item";
 import { DateDivider, UnreadDivider } from "./unread-divider";
 
@@ -102,6 +103,8 @@ export const MessageList = forwardRef<MessageListHandle, Props>(function Message
             {items.map((item) => {
               if (item.type === "date") return <DateDivider key={item.key} date={item.date} timeZone={itemProps.timeZone} />;
               if (item.type === "unread") return <UnreadDivider key={item.key} />;
+              if (item.message.kind === "system")
+                return <SystemEvent key={item.key} message={item.message} timeZone={itemProps.timeZone} />;
               return (
                 <MessageItem key={item.key} message={item.message} isGroupStart={item.isGroupStart} {...itemProps} />
               );

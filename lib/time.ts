@@ -52,3 +52,57 @@ export function safeTimeZone(tz: string | null | undefined) {
     return DEFAULT_TIMEZONE;
   }
 }
+
+/** Compact age for lists: "just now", "12m", "3h", "2d", then "Sep 28". */
+export function formatAge(date: Date, timeZone: string, now = new Date()) {
+  const mins = Math.floor((now.getTime() - date.getTime()) / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return fmt(timeZone, { month: "short", day: "numeric" }).format(date);
+}
+
+/** "Good morning" / "Good afternoon" / "Good evening" in the viewer's timezone. */
+export function greeting(date: Date, timeZone: string) {
+  const hour = Number(fmt(timeZone, { hour: "numeric", hourCycle: "h23" }).format(date));
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+
+/** "Thursday, October 9" */
+export function longDate(date: Date, timeZone: string) {
+  return fmt(timeZone, { weekday: "long", month: "long", day: "numeric" }).format(date);
+}
+
+/** Offset of `timeZone` from UTC at `date`, in minutes (e.g. -240 for New York in summer). */
+function tzOffsetMinutes(date: Date, timeZone: string) {
+  const parts = fmt(timeZone, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return Math.round((asUtc - date.getTime()) / 60_000);
+}
+
+/** Wall-clock "2026-10-09" + "15:30" in `timeZone` → the real instant (DST-safe). */
+export function zonedToUtc(day: string, time: string, timeZone: string): Date {
+  const [y, m, d] = day.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+  const guess = Date.UTC(y, m - 1, d, hh, mm);
+  const first = guess - tzOffsetMinutes(new Date(guess), timeZone) * 60_000;
+  // Re-check with the offset at the candidate instant, in case we crossed a DST change.
+  return new Date(guess - tzOffsetMinutes(new Date(first), timeZone) * 60_000);
+}
+
+/** "15:30" in the zone, for filling a time input. */
+export function timeKey(date: Date, timeZone: string) {
+  return fmt(timeZone, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date);
+}

@@ -2,21 +2,29 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CircleUserRound, LifeBuoy, MessagesSquare } from "lucide-react";
+import { Bell, CircleUserRound, House, LifeBuoy, MessagesSquare, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCount } from "./channel-nav";
 import { useHub } from "./hub-context";
 
-const TABS = [
-  { href: "/c", match: ["/c"], label: "Chat", icon: MessagesSquare },
-  { href: "/help", match: ["/help", "/kb"], label: "Help", icon: LifeBuoy },
-  { href: "/inbox", match: ["/inbox"], label: "Inbox", icon: Bell },
-  { href: "/me", match: ["/me"], label: "Me", icon: CircleUserRound },
-] as const;
+type Tab = { href: string; match: string[]; exact?: boolean; label: string; icon: typeof House };
+
+/** Home · Chat · Help (Tickets for the team) · Inbox · Me */
+function tabsFor(isStaff: boolean): Tab[] {
+  return [
+    { href: "/dashboard", match: ["/dashboard", "/dashboard/tasks"], exact: true, label: "Home", icon: House },
+    { href: "/c", match: ["/c"], label: "Chat", icon: MessagesSquare },
+    isStaff
+      ? { href: "/dashboard/tickets", match: ["/dashboard/tickets", "/help"], label: "Tickets", icon: Ticket }
+      : { href: "/dashboard/tickets", match: ["/dashboard/tickets", "/help", "/kb"], label: "Help", icon: LifeBuoy },
+    { href: "/inbox", match: ["/inbox"], label: "Inbox", icon: Bell },
+    { href: "/me", match: ["/me"], label: "Me", icon: CircleUserRound },
+  ];
+}
 
 export function BottomTabs() {
   const pathname = usePathname();
-  const { unread } = useHub();
+  const { unread, isStaff } = useHub();
   const chatUnread = Object.values(unread).reduce((a, b) => a + b, 0);
 
   return (
@@ -24,9 +32,9 @@ export function BottomTabs() {
       aria-label="Main"
       className="paper border-rule border-t pb-[env(safe-area-inset-bottom)] md:hidden in-data-keyboard-open:hidden"
     >
-      <ul className="grid grid-cols-4">
-        {TABS.map(({ href, match, label, icon: Icon }) => {
-          const active = match.some((m) => pathname === m || pathname.startsWith(`${m}/`));
+      <ul className="grid grid-cols-5">
+        {tabsFor(isStaff).map(({ href, match, exact, label, icon: Icon }) => {
+          const active = match.some((m) => pathname === m || (!exact && pathname.startsWith(`${m}/`)));
           const badge = label === "Chat" && chatUnread > 0 ? formatCount(chatUnread) : null;
           return (
             <li key={href}>

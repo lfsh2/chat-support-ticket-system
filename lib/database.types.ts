@@ -36,6 +36,25 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"events": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"description": string | null,"ends_at": string | null,"id": string,"link": string | null,"program": Database["public"]['Enums']["program"] | null,"starts_at": string,"title": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"description"?: string | null,"ends_at"?: string | null,"id"?: string,"link"?: string | null,"program"?: Database["public"]['Enums']["program"] | null,"starts_at": string,"title": string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"description"?: string | null,"ends_at"?: string | null,"id"?: string,"link"?: string | null,"program"?: Database["public"]['Enums']["program"] | null,"starts_at"?: string,"title"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "events_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"kb_articles": {
                   Row: {
                     "body_md": string,"category": Database["public"]['Enums']["ticket_category"] | null,"id": string,"program": Database["public"]['Enums']["program"] | null,"published": boolean | null,"search": unknown,"slug": string,"title": string,"updated_at": string | null
@@ -237,6 +256,37 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"tasks": {
+                  Row: {
+                    "assignee_id": string | null,"completed_at": string | null,"created_at": string,"created_by": string | null,"due_on": string | null,"id": string,"notes": string | null,"priority": Database["public"]['Enums']["ticket_priority"],"status": Database["public"]['Enums']["task_status"],"ticket_id": string | null,"title": string,"updated_at": string
+                  }
+                  Insert: {
+                    "assignee_id"?: string | null,"completed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"due_on"?: string | null,"id"?: string,"notes"?: string | null,"priority"?: Database["public"]['Enums']["ticket_priority"],"status"?: Database["public"]['Enums']["task_status"],"ticket_id"?: string | null,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "assignee_id"?: string | null,"completed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"due_on"?: string | null,"id"?: string,"notes"?: string | null,"priority"?: Database["public"]['Enums']["ticket_priority"],"status"?: Database["public"]['Enums']["task_status"],"ticket_id"?: string | null,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tasks_assignee_id_fkey"
+      columns: ["assignee_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tasks_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tasks_ticket_id_fkey"
+      columns: ["ticket_id"]
+isOneToOne: false
+      referencedRelation: "tickets"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"tickets": {
                   Row: {
                     "assignee_id": string | null,"category": Database["public"]['Enums']["ticket_category"],"created_at": string | null,"first_response_at": string | null,"id": string,"number": number,"priority": Database["public"]['Enums']["ticket_priority"],"program": Database["public"]['Enums']["program"],"requester_id": string,"resolved_at": string | null,"satisfaction": number | null,"status": Database["public"]['Enums']["ticket_status"],"subject": string,"updated_at": string | null
@@ -296,10 +346,18 @@ isOneToOne: false
                            },
 "mark_channel_read":
 { Args: { "cid": string }; Returns: undefined
+                           },
+"open_ticket":
+{ Args: { "p_body": string,"p_category": Database["public"]['Enums']["ticket_category"],"p_priority"?: Database["public"]['Enums']["ticket_priority"],"p_program": Database["public"]['Enums']["program"],"p_subject": string }; Returns: {
+              "id": string,"number": number
+            }[]
+                           },
+"rate_ticket":
+{ Args: { "score": number,"tid": string }; Returns: undefined
                            }
           }
           Enums: {
-            "channel_type": "text"|"announcement","membership_status": "active"|"past_due"|"canceled"|"manual","program": "alive_free"|"coachos","ticket_category": "tech"|"website_domain"|"billing"|"coaching"|"other","ticket_priority": "normal"|"high"|"urgent","ticket_status": "new"|"open"|"waiting_on_client"|"resolved"|"closed","user_role": "member"|"agent"|"admin"|"owner"
+            "channel_type": "text"|"announcement","membership_status": "active"|"past_due"|"canceled"|"manual","program": "alive_free"|"coachos","task_status": "todo"|"in_progress"|"done","ticket_category": "tech"|"website_domain"|"billing"|"coaching"|"other","ticket_priority": "normal"|"high"|"urgent","ticket_status": "new"|"open"|"waiting_on_client"|"resolved"|"closed","user_role": "member"|"agent"|"admin"|"owner"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -419,7 +477,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "channel_type": ["text", "announcement"],"membership_status": ["active", "past_due", "canceled", "manual"],"program": ["alive_free", "coachos"],"ticket_category": ["tech", "website_domain", "billing", "coaching", "other"],"ticket_priority": ["normal", "high", "urgent"],"ticket_status": ["new", "open", "waiting_on_client", "resolved", "closed"],"user_role": ["member", "agent", "admin", "owner"]
+            "channel_type": ["text", "announcement"],"membership_status": ["active", "past_due", "canceled", "manual"],"program": ["alive_free", "coachos"],"task_status": ["todo", "in_progress", "done"],"ticket_category": ["tech", "website_domain", "billing", "coaching", "other"],"ticket_priority": ["normal", "high", "urgent"],"ticket_status": ["new", "open", "waiting_on_client", "resolved", "closed"],"user_role": ["member", "agent", "admin", "owner"]
           }
         }
 } as const
