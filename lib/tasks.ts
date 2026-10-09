@@ -9,8 +9,6 @@ export const TASK_COLUMNS: { status: TaskStatus; label: string; empty: string }[
   { status: "done", label: "Done", empty: "Finished tasks land here." },
 ];
 
-export const TASK_STATUS_LABEL: Record<TaskStatus, string> = { todo: "To do", in_progress: "In progress", done: "Done" };
-
 type Person = Pick<Tables<"profiles">, "id" | "display_name" | "avatar_url">;
 
 export const TASK_SELECT =

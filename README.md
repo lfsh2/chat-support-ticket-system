@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Alive + Free Client Hub
 
-## Getting Started
+A private support hub for Alive & Free clients and CoachOS subscribers: Discord-style
+channels, support tickets that work like private chats with the team, an internal task
+tracker and a shared calendar. Mobile first.
 
-First, run the development server:
+Next.js (App Router) · TypeScript · Tailwind + shadcn/ui · Supabase (Postgres + RLS, Auth,
+Realtime, Storage). The full product spec lives in [`CLAUDE.md`](CLAUDE.md).
+
+## Run it locally
+
+Needs Node 22+, pnpm and Docker (for the local Supabase).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm db:start            # local Supabase in Docker (first run downloads images)
+pnpm db:reset            # schema + test data (supabase/seed.sql)
+cp .env.example .env.local   # then fill in the values `pnpm db:start` printed
+pnpm dev                 # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+With `DEV_LOGIN=true` in `.env.local`, `/login` shows one-click sign-in for the test users,
+or go straight to `/auth/dev?as=agent` (also `coachos`, `alivefree`, `both`, `owner`,
+`lapsed`). Sign-in emails land in Mailpit at http://127.0.0.1:54324, and the local Supabase
+dashboard is at http://127.0.0.1:54323.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Checks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm typecheck
+pnpm lint
+pnpm test                    # unit tests (Vitest)
+pnpm exec playwright test    # end-to-end, against the local dev server + Supabase
+```
 
-## Learn More
+## Database changes
 
-To learn more about Next.js, take a look at the following resources:
+Add a new file in `supabase/migrations/` (never edit one that has already run), then:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm exec supabase migration up   # apply locally without wiping data
+pnpm db:types                     # regenerate lib/database.types.ts
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploying
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The app runs on DigitalOcean App Platform with a hosted Supabase project. Step-by-step:
+[`docs/DEPLOY.md`](docs/DEPLOY.md). Until the admin Members screen exists, people are let in
+with `pnpm access` (see that guide).
