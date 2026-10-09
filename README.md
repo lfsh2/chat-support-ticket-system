@@ -46,4 +46,4 @@ pnpm db:types                     # regenerate lib/database.types.ts
 
 The app runs on DigitalOcean App Platform with a hosted Supabase project. Step-by-step:
 [`docs/DEPLOY.md`](docs/DEPLOY.md). Until the admin Members screen exists, people are let in
-with `pnpm access` (see that guide).
+with `pnpm hub` (see that guide).

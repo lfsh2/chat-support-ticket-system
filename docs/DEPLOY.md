@@ -67,7 +67,8 @@ Build command `pnpm build`, run command `pnpm start`. Deploy.
 ## 5. Check it
 
 Open `https://<your hub domain>/api/health`. You want `"ok": true`, `"database": "ok"`,
-`"channels": 8` and `"testUsers": 0`. If something's wrong it says which setting is missing.
+`"channels": 8`. `"testUsers"` counts `@example.com` accounts: it should only match placeholder
+accounts you created on purpose. If something's wrong it says which setting is missing.
 
 ## 6. Let people in
 
@@ -82,14 +83,16 @@ SUPABASE_SERVICE_ROLE_KEY=<service_role key>
 Then:
 
 ```bash
-pnpm access staff spencer@<domain> owner          # team: agent | admin | owner
-pnpm access staff sammi@<domain> owner
-pnpm access grant client@example.com coachos      # clients: coachos | alive_free
-pnpm access revoke client@example.com coachos
-pnpm access list
+pnpm hub staff spencer@<domain> owner          # team: agent | admin | owner
+pnpm hub staff sammi@<domain> owner
+pnpm hub grant client@example.com coachos      # clients: coachos | alive_free
+pnpm hub revoke client@example.com coachos
+pnpm hub list
 ```
 
-People sign in at `/login` with that email and get a link by email.
+People sign in at `/login` with that email and get a link by email. For an account with no real
+inbox (a placeholder), `pnpm hub link <email>` prints a one-time sign-in link instead (needs
+`NEXT_PUBLIC_APP_URL` in `.env.production.local`; the link works once and expires in an hour).
 
 ## 7. Smoke test
 
@@ -99,11 +102,11 @@ People sign in at `/login` with that email and get a link by email.
 3. Back as owner: the ticket is in **Tickets → Unassigned**; reply, add an internal note,
    check the client sees the reply but not the note.
 4. Add a calendar event for that program; the client sees it on their dashboard.
-5. `pnpm access revoke` the test client → their next page load shows "access ended".
+5. `pnpm hub revoke` the test client → their next page load shows "access ended".
 
 ## Not built yet (plan around these)
 
 - **No email notifications** for new tickets or replies yet — the team needs to check the
   dashboard, and clients see replies when they open the hub.
-- **No Stripe sync** — paying doesn't grant access automatically; use `pnpm access grant`.
+- **No Stripe sync** — paying doesn't grant access automatically; use `pnpm hub grant`.
 - **No admin Members screen**, Inbox, threads or @mentions yet.
