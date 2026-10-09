@@ -1,12 +1,14 @@
 // Grant and revoke hub access from the terminal, until the admin Members screen exists.
 //
-//   pnpm access list
-//   pnpm access grant  client@email.com coachos        # or alive_free — lets them sign in
-//   pnpm access revoke client@email.com coachos
-//   pnpm access staff  sammi@aliveandfreeconsulting.com owner   # agent | admin | owner
+//   pnpm hub list
+//   pnpm hub grant  client@email.com coachos ["Display Name"]   # or alive_free — lets them sign in
+//   pnpm hub revoke client@email.com coachos
+//   pnpm hub staff  sammi@aliveandfreeconsulting.com owner ["Sammi"]   # agent | admin | owner
+//   pnpm hub name   client@email.com "New Name"
+//   pnpm hub link   client@email.com     # one-time sign-in link, no email needed (expires in 1 hour)
 //
-// Reads NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY from .env.production.local
-// (or the environment). Always prints which project it's about to change.
+// Reads NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and NEXT_PUBLIC_APP_URL from
+// .env.production.local (or the environment). Always prints which project it's about to change.
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -21,7 +23,8 @@ if (!url || !key) {
 }
 const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
-const [command, rawEmail, arg] = process.argv.slice(2);
+const [command, rawEmail, arg, ...rest] = process.argv.slice(2);
+const displayName = (command === "name" ? [arg, ...rest] : rest).join(" ").trim() || null;
 const email = rawEmail?.trim().toLowerCase();
 const fail = (msg) => {
   console.error(msg);
@@ -31,11 +34,21 @@ const needEmail = () => (email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? ema
 
 console.log(`Supabase project: ${url}\n`);
 
-/** Makes sure an auth user (and so a profile, via trigger) exists for this email. */
-async function ensureUser(address) {
+/** Makes sure an auth user (and so a profile, via trigger) exists for this email; sets the name if given. */
+async function ensureUser(address, name = null) {
   const { data: existing } = await db.from("profiles").select("id").eq("email", address).maybeSingle();
-  if (existing) return existing.id;
-  const { data, error } = await db.auth.admin.createUser({ email: address, email_confirm: true });
+  if (existing) {
+    if (name) {
+      const { error } = await db.from("profiles").update({ display_name: name }).eq("id", existing.id);
+      if (error) fail(error.message);
+    }
+    return existing.id;
+  }
+  const { data, error } = await db.auth.admin.createUser({
+    email: address,
+    email_confirm: true,
+    user_metadata: name ? { display_name: name } : {},
+  });
   if (error) fail(`Couldn't create the account: ${error.message}`);
   return data.user.id;
 }
@@ -59,6 +72,8 @@ switch (command) {
       .from("memberships")
       .upsert({ email, program: arg, status: "manual", source: "manual", grace_until: null }, { onConflict: "email,program" });
     if (error) fail(error.message);
+    // With a name, create the account now so it shows up properly before their first sign-in.
+    if (displayName) await ensureUser(email, displayName);
     console.log(`✓ ${email} can now sign in to ${arg}. They sign in at /login with this email.`);
     break;
   }
@@ -79,7 +94,7 @@ switch (command) {
   case "staff": {
     needEmail();
     if (!ROLES.includes(arg)) fail(`Role must be one of: ${ROLES.join(", ")}`);
-    const id = await ensureUser(email);
+    const id = await ensureUser(email, displayName);
     const { error } = await db.from("profiles").update({ role: arg }).eq("id", id);
     if (error) fail(error.message);
     console.log(
@@ -87,10 +102,31 @@ switch (command) {
     );
     break;
   }
+  case "name": {
+    needEmail();
+    if (!displayName) fail('Give the new name, e.g. pnpm hub name you@email.com "Your Name"');
+    await ensureUser(email, displayName);
+    console.log(`✓ ${email} now shows as "${displayName}".`);
+    break;
+  }
+  case "link": {
+    needEmail();
+    const app = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+    if (!app || !/^https?:\/\//.test(app)) fail("Set NEXT_PUBLIC_APP_URL (your live address) in .env.production.local first.");
+    const { data: profile } = await db.from("profiles").select("id").eq("email", email).maybeSingle();
+    if (!profile) fail(`No account for ${email}. Create it first with grant or staff.`);
+    const { data, error } = await db.auth.admin.generateLink({ type: "magiclink", email });
+    if (error || !data.properties?.hashed_token) fail(`Couldn't make a link: ${error?.message ?? "unknown error"}`);
+    const signIn = `${app}/auth/confirm?token_hash=${data.properties.hashed_token}&type=magiclink&next=/dashboard`;
+    console.log(`One-time sign-in link for ${email} (works once, expires in 1 hour — treat it like a password):\n\n${signIn}\n`);
+    break;
+  }
   default:
     console.log(`Usage:
-  pnpm access list
-  pnpm access grant  <email> <coachos|alive_free>
-  pnpm access revoke <email> <coachos|alive_free>
-  pnpm access staff  <email> <agent|admin|owner|member>`);
+  pnpm hub list
+  pnpm hub grant  <email> <coachos|alive_free> ["Display Name"]
+  pnpm hub revoke <email> <coachos|alive_free>
+  pnpm hub staff  <email> <agent|admin|owner|member> ["Display Name"]
+  pnpm hub name   <email> "Display Name"
+  pnpm hub link   <email>`);
 }

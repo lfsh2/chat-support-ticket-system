@@ -492,7 +492,7 @@ hooks/
 supabase/
   migrations/, seed.sql (local test data only), production.sql (channels + articles)
 scripts/
-  access.mjs                ← `pnpm access` grant/revoke/staff until the admin Members screen exists
+  access.mjs                ← `pnpm hub` grant/revoke/staff until the admin Members screen exists
 docs/
   DEPLOY.md                 ← go-live steps
 ```
