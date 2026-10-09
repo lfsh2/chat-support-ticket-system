@@ -1,12 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { DEV_USERS, canUseDevLogin, signInAsDevUser } from "@/lib/dev-login";
+import { publicOrigin } from "@/lib/url";
 
 /**
  * Local dev only:  /auth/dev?as=coachos   (optionally &next=/c/wins)
  * 404s unless local dev login is on — see lib/dev-login.ts. Never active in production.
  */
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = request.nextUrl;
+  const { searchParams } = request.nextUrl;
+  const origin = publicOrigin(request);
   if (!canUseDevLogin()) return new NextResponse("Not found", { status: 404 });
 
   const user = DEV_USERS.find((u) => u.slug === searchParams.get("as"));

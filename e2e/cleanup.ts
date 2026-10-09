@@ -8,6 +8,7 @@ export async function cleanupE2eData() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
+  if (!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(url)) throw new Error(`Refusing to clean up non-local Supabase: ${url}`);
   const admin = createClient<Database>(url, key, { auth: { persistSession: false } });
   const { data: tickets } = await admin.from("tickets").select("id").like("subject", `${E2E_TAG}%`);
   const ids = (tickets ?? []).map((t) => t.id);
