@@ -1,8 +1,6 @@
 "use server";
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { DEMO_OFFLINE } from "@/lib/demo/config";
 import { z } from "zod";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { canSignIn, normalizeEmail } from "@/lib/access";
@@ -48,13 +46,6 @@ export async function requestMagicLink(_prev: LoginState, formData: FormData): P
       email,
       message: `We couldn't find an active membership for this email. Use the email you paid with, or contact ${SUPPORT_EMAIL}.`,
     };
-  }
-
-  // Offline demo: no email to send — sign straight in as that test member.
-  if (DEMO_OFFLINE && profile) {
-    const { setDemoUser } = await import("@/lib/demo/server");
-    await setDemoUser(profile.id);
-    redirect(safeNext(parsed.data.next));
   }
 
   // Open sign-up is off in Supabase, so first-time members get an account created here.

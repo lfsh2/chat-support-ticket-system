@@ -1,9 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/lib/database.types";
-import { DEMO_COOKIE, DEMO_OFFLINE } from "@/lib/demo/config";
 
-const PUBLIC_PATHS = ["/login", "/auth", "/access-ended", "/api/webhooks", "/api/cron", "/api/health", "/api/demo"];
+const PUBLIC_PATHS = ["/login", "/auth", "/access-ended", "/api/webhooks", "/api/cron", "/api/health"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -12,9 +11,6 @@ function isPublic(pathname: string) {
 /** Refreshes the Supabase session cookie and sends signed-out visitors to /login. */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
-
-  // Offline demo: the signed-in user is just a cookie; no Supabase session to refresh.
-  if (DEMO_OFFLINE) return route(request, response, Boolean(request.cookies.get(DEMO_COOKIE)?.value));
 
   // Misconfigured deploy: let public pages (login, /api/health) render instead of a blank 500.
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {

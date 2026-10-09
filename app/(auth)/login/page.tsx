@@ -7,7 +7,7 @@ import { LoginForm } from "./login-form";
 export const metadata: Metadata = { title: `Sign in · ${APP_NAME}` };
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  const { next, error, demo } = await searchParams;
+  const { next, error } = await searchParams;
   return (
     <AuthCard
       title="Sign in"
@@ -15,7 +15,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
     >
       {error === "dev" && (
         <p className="border-warning text-foreground mb-6 border-l-2 py-1 pl-3 text-sm" role="alert">
-          That test sign-in didn&apos;t work — the demo database isn&apos;t connected yet. Try again in a few minutes.
+          That test sign-in didn&apos;t work. Is local Supabase running and seeded?
         </p>
       )}
       {error === "link" && (
@@ -24,7 +24,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </p>
       )}
       <LoginForm next={typeof next === "string" ? next : undefined} />
-      <DevLoginPanel demoKey={typeof demo === "string" ? demo : undefined} />
+      <DevLoginPanel />
     </AuthCard>
   );
 }

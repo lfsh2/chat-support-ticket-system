@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { DEMO_OFFLINE } from "@/lib/demo/config";
 
 export const dynamic = "force-dynamic";
 
@@ -9,16 +8,11 @@ export const dynamic = "force-dynamic";
  * the database answers, so a blank "Internal Server Error" can be traced quickly.
  */
 export async function GET() {
-  if (DEMO_OFFLINE) {
-    return NextResponse.json({ ok: true, mode: "offline demo (in-memory sample data, resets on restart)" });
-  }
   const env = {
     NEXT_PUBLIC_APP_URL: Boolean(process.env.NEXT_PUBLIC_APP_URL),
     NEXT_PUBLIC_SUPABASE_URL: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    DEMO_LOGIN_KEY: (process.env.DEMO_LOGIN_KEY ?? "").length >= 16,
-    DEMO_MODE: process.env.DEMO_MODE === "true",
   };
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const supabaseIsLocal = /127\.0\.0\.1|localhost/.test(url);
@@ -40,7 +34,7 @@ export async function GET() {
     database = `error: ${err instanceof Error ? err.message : String((err as { message?: string })?.message ?? err)}`;
   }
 
-  const ok = Object.entries(env).every(([k, v]) => v || k.startsWith("DEMO_")) && !supabaseIsLocal && database === "ok";
+  const ok = Object.values(env).every(Boolean) && !supabaseIsLocal && database === "ok";
   return NextResponse.json(
     {
       ok,
