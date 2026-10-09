@@ -3,11 +3,8 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
-import { DEMO_OFFLINE } from "@/lib/demo/config";
-import { createServerDemoClient } from "@/lib/demo/server";
 
 export async function createClient(): Promise<SupabaseClient<Database>> {
-  if (DEMO_OFFLINE) return createServerDemoClient() as unknown as SupabaseClient<Database>;
   const cookieStore = await cookies();
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +26,6 @@ export async function createClient(): Promise<SupabaseClient<Database>> {
 
 /** Service-role client. Bypasses RLS — server-only, never expose to the browser. */
 export function createAdminClient(): SupabaseClient<Database> {
-  if (DEMO_OFFLINE) return createServerDemoClient({ asAdmin: true }) as unknown as SupabaseClient<Database>;
   return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

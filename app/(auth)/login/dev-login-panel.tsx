@@ -1,10 +1,9 @@
-import { DEV_USERS, canUseDevLogin, devLoginEnabled } from "@/lib/dev-login";
+import { DEV_USERS, canUseDevLogin } from "@/lib/dev-login";
 import { devSignIn } from "./dev-actions";
 
-/** Renders nothing unless local dev login is on, or a valid demo key is in the URL. */
-export function DevLoginPanel({ demoKey }: { demoKey?: string }) {
-  if (!canUseDevLogin(demoKey)) return null;
-  const isDemo = !devLoginEnabled();
+/** Local development only: renders nothing unless DEV_LOGIN is on with a local Supabase. */
+export function DevLoginPanel() {
+  if (!canUseDevLogin()) return null;
   return (
     <section aria-labelledby="dev-login-h" className="border-warning/60 mt-10 rounded-xl border border-dashed p-4">
       <h2 id="dev-login-h" className="note text-[15px]">
@@ -15,7 +14,6 @@ export function DevLoginPanel({ demoKey }: { demoKey?: string }) {
           <li key={u.email}>
             <form action={devSignIn}>
               <input type="hidden" name="email" value={u.email} />
-              {isDemo && demoKey && <input type="hidden" name="key" value={demoKey} />}
               <button
                 type="submit"
                 className="border-rule hover:border-foreground/30 bg-card flex min-h-12 w-full cursor-pointer flex-col items-start rounded-lg border px-3 py-2 text-left transition-colors"
