@@ -2,7 +2,7 @@ import type { DemoEvent, DemoFilter, DemoQuery, DemoResult, DemoRow } from "./ty
 
 /**
  * A Supabase-shaped client for the offline demo. Implements only what the app calls:
- * from().select/insert/update/delete + eq/is/lt/like/match/order/limit/single/maybeSingle,
+ * from().select/insert/update/delete + eq/is/lt/gte/in/like/match/order/limit/single/maybeSingle,
  * rpc(), channel().on().subscribe() (polled), removeChannel(), storage and auth basics.
  */
 export type DemoTransport = {
@@ -52,6 +52,14 @@ class QueryBuilder implements PromiseLike<DemoResult> {
   }
   lt(col: string, val: unknown) {
     this.q.filters.push({ op: "lt", col, val });
+    return this;
+  }
+  gte(col: string, val: unknown) {
+    this.q.filters.push({ op: "gte", col, val });
+    return this;
+  }
+  in(col: string, vals: readonly unknown[]) {
+    this.q.filters.push({ op: "in", col, val: [...vals] });
     return this;
   }
   like(col: string, val: string) {

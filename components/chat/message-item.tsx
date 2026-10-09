@@ -95,6 +95,7 @@ export const MessageItem = memo(function MessageItem({
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const mine = message.author_id === myId;
+  const note = message.kind === "internal_note";
   const deleted = message.deleted_at != null;
   const at = new Date(message.created_at ?? 0);
   const authorName = message.author?.display_name ?? "Someone";
@@ -122,6 +123,9 @@ export const MessageItem = memo(function MessageItem({
       className={cn(
         "group/message relative flex gap-3 px-4 transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--foreground)_3%,transparent)] md:px-6",
         isGroupStart ? "mt-2.5 pt-1.5 pb-0.5" : "py-0.5",
+        // Internal notes: a yellow wash and a margin rule, so nobody mistakes one for a reply.
+        note &&
+          "border-warning bg-[color-mix(in_oklab,var(--warning)_9%,transparent)] hover:bg-[color-mix(in_oklab,var(--warning)_13%,transparent)] my-1 border-l-[3px] py-2",
         message.status === "sending" && "opacity-60",
         message.status && "animate-in slide-in-from-bottom-2 fade-in motion-reduce:animate-none duration-200",
         "select-none md:select-text",
@@ -150,6 +154,7 @@ export const MessageItem = memo(function MessageItem({
             <time dateTime={message.created_at ?? undefined} className="text-muted-foreground text-xs tabular-nums">
               {formatTime(at, timeZone)}
             </time>
+            {note && <span className="text-warning text-xs font-semibold">Internal note · only the team sees this</span>}
           </div>
         )}
 

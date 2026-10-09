@@ -71,3 +71,65 @@ insert into kb_articles (slug, title, body_md, program, category, published) val
 insert into messages (channel_id, author_id, body)
 select id, '00000000-0000-4000-a000-000000000005', 'Welcome to the Client Hub! Say hi and let us know how we can help. 👋'
 from channels where slug in ('announcements', 'general');
+
+-- Sample tickets and team tasks. Triggers are off for this block so the backdated
+-- timestamps and statuses stay exactly as written (no reopen-on-reply, no system events).
+set session_replication_role = replica;
+do $$
+declare
+  casey constant uuid := '00000000-0000-4000-a000-000000000001';
+  alex  constant uuid := '00000000-0000-4000-a000-000000000002';
+  bailey constant uuid := '00000000-0000-4000-a000-000000000003';
+  jon   constant uuid := '00000000-0000-4000-a000-000000000004';
+  t1 uuid; t2 uuid; t3 uuid;
+begin
+  insert into tickets (requester_id, program, category, priority, status, subject, assignee_id, created_at, updated_at, first_response_at)
+  values (casey, 'coachos', 'website_domain', 'high', 'open', 'My domain still says pending verification', jon,
+          now() - interval '5 hours', now() - interval '2 hours', now() - interval '4 hours')
+  returning id into t1;
+  insert into messages (ticket_id, author_id, body, created_at) values
+    (t1, casey, 'I added the CNAME record yesterday but CoachOS still says **pending verification**. Is something wrong?', now() - interval '5 hours'),
+    (t1, jon, 'Thanks Casey — I''m taking a look now. Could you send a screenshot of your DNS page in GoDaddy?', now() - interval '4 hours'),
+    (t1, casey, 'Sure, here you go. The record is `www` → the value from Settings.', now() - interval '2 hours');
+  insert into messages (ticket_id, author_id, kind, body, created_at) values
+    (t1, jon, 'internal_note', 'Their CNAME has a trailing dot missing. Will walk them through it.', now() - interval '110 minutes');
+
+  insert into tickets (requester_id, program, category, status, subject, created_at, updated_at)
+  values (alex, 'alive_free', 'billing', 'new', 'Can I switch to the annual plan?', now() - interval '50 minutes', now() - interval '50 minutes')
+  returning id into t2;
+  insert into messages (ticket_id, author_id, body, created_at)
+  values (t2, alex, 'I''d like to move to annual billing to save a bit. How do I do that?', now() - interval '50 minutes');
+
+  insert into tickets (requester_id, program, category, status, subject, assignee_id, created_at, updated_at, resolved_at, first_response_at)
+  values (bailey, 'coachos', 'tech', 'resolved', 'Calendar not syncing with booking page', jon,
+          now() - interval '3 days', now() - interval '2 days', now() - interval '2 days', now() - interval '3 days')
+  returning id into t3;
+  insert into messages (ticket_id, author_id, body, created_at) values
+    (t3, bailey, 'New bookings aren''t showing on my Google Calendar.', now() - interval '3 days'),
+    (t3, jon, 'Reconnect it under **Settings → Integrations → Calendar** and it should catch up within a minute.', now() - interval '3 days' + interval '20 minutes'),
+    (t3, bailey, 'That fixed it, thanks!', now() - interval '2 days');
+
+  -- Team tasks
+  insert into tasks (title, notes, status, priority, assignee_id, created_by, ticket_id, due_on) values
+    ('Walk Casey through the CNAME fix', 'Record a short Loom showing the trailing-dot issue.', 'in_progress', 'high', jon, jon, t1, current_date),
+    ('Reply to Alex about annual billing', null, 'todo', 'normal', null, jon, t2, current_date + 1),
+    ('Write KB article: calendar sync troubleshooting', 'Based on Bailey''s ticket.', 'todo', 'normal', jon, jon, t3, current_date + 5),
+    ('Prep Thursday Q&A questions', null, 'todo', 'normal', '00000000-0000-4000-a000-000000000005', jon, null, current_date - 1),
+    ('Update onboarding checklist for new CoachOS clients', null, 'done', 'normal', jon, jon, null, null);
+end $$;
+reset session_replication_role;
+
+-- Sample calendar events (times are 12pm / 3pm Eastern on nearby days)
+insert into events (title, description, program, starts_at, ends_at, link, created_by) values
+  ('Live Q&A', 'Bring your questions — we''ll cover as many as we can.', null,
+   (date_trunc('week', now() at time zone 'America/New_York') + interval '3 days 12 hours') at time zone 'America/New_York',
+   (date_trunc('week', now() at time zone 'America/New_York') + interval '3 days 13 hours') at time zone 'America/New_York',
+   'https://zoom.us', '00000000-0000-4000-a000-000000000005'),
+  ('CoachOS office hours', 'Drop in with setup questions: domains, calendars, email.', 'coachos',
+   (current_date + 2 + time '15:00') at time zone 'America/New_York',
+   (current_date + 2 + time '16:00') at time zone 'America/New_York',
+   'https://zoom.us', '00000000-0000-4000-a000-000000000004'),
+  ('Alive & Free workshop: Clarifying your offer', null, 'alive_free',
+   (current_date + 6 + time '12:00') at time zone 'America/New_York',
+   (current_date + 6 + time '13:30') at time zone 'America/New_York',
+   null, '00000000-0000-4000-a000-000000000005');

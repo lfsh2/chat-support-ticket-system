@@ -30,10 +30,16 @@ export function Composer({
   draftId,
   placeholder,
   onSend,
+  tone = "default",
+  children,
 }: {
   draftId: string;
   placeholder: string;
   onSend: (body: string, files: File[]) => boolean;
+  /** "note" tints the box for staff-only internal notes. */
+  tone?: "default" | "note";
+  /** Extra controls above the box (e.g. reply / internal note switch). */
+  children?: React.ReactNode;
 }) {
   const [value, setValue] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -84,7 +90,11 @@ export function Composer({
         submit();
       }}
     >
-      <div className="bg-card border-rule focus-within:border-foreground/35 rounded-xl border transition-colors duration-200">
+      {children}
+      <div
+        data-tone={tone}
+        className="bg-card border-rule focus-within:border-foreground/35 data-[tone=note]:border-warning data-[tone=note]:bg-[color-mix(in_oklab,var(--warning)_7%,var(--card))] rounded-xl border transition-colors duration-200"
+      >
         {files.length > 0 && (
           <ul className="flex flex-wrap gap-2 px-2 pt-2" aria-label="Attachments to send">
             {files.map((f, i) => (

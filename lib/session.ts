@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { activePrograms, isStaffRole, type Program } from "@/lib/access";
 
 /** Current user's profile + access, once per request. Redirects if signed out or lapsed. */
 export const requireHubAccess = cache(async () => {
@@ -18,4 +19,12 @@ export const requireHubAccess = cache(async () => {
   if (!hasAccess) redirect("/access-ended");
 
   return { supabase, profile };
+});
+
+/** Programs the current user can open tickets in. Staff can file for either. */
+export const myPrograms = cache(async (): Promise<Program[]> => {
+  const { supabase, profile } = await requireHubAccess();
+  if (isStaffRole(profile.role)) return ["coachos", "alive_free"];
+  const { data } = await supabase.from("memberships").select("program, status, grace_until").eq("user_id", profile.id);
+  return activePrograms(data ?? []);
 });

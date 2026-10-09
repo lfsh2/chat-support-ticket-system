@@ -15,6 +15,7 @@ export function TopBar({
   actions,
   accent,
   showMenu = true,
+  leading,
   className,
 }: {
   title: React.ReactNode;
@@ -22,6 +23,8 @@ export function TopBar({
   actions?: React.ReactNode;
   accent?: string;
   showMenu?: boolean;
+  /** Replaces the ☰ button, e.g. a back link on detail pages. */
+  leading?: React.ReactNode;
   className?: string;
 }) {
   const { setOpenMobile } = useSidebar();
@@ -37,7 +40,8 @@ export function TopBar({
         style={{ background: accent ?? "var(--ink)", opacity: accent ? 1 : 0.12 }}
         aria-hidden
       />
-      {showMenu && (
+      {leading}
+      {showMenu && !leading && (
         <Button
           variant="ghost"
           size="icon"
