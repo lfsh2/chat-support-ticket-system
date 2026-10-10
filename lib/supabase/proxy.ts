@@ -41,6 +41,16 @@ export async function updateSession(request: NextRequest) {
 function route(request: NextRequest, response: NextResponse, signedIn: boolean) {
   const { pathname, search } = request.nextUrl;
 
+  // Supabase's default sign-in email returns people to the Site URL with ?code=… (PKCE).
+  // Finish signing in at /auth/callback instead of bouncing them to /login.
+  const code = request.nextUrl.searchParams.get("code");
+  if (code && !signedIn && !pathname.startsWith("/auth/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    url.search = `?code=${encodeURIComponent(code)}&next=${encodeURIComponent(pathname === "/login" ? "/" : pathname)}`;
+    return NextResponse.redirect(url);
+  }
+
   if (!signedIn && !isPublic(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

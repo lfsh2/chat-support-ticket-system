@@ -67,3 +67,13 @@ test("a membership that lapses mid-session redirects to /access-ended", async ({
     await setStatus("active");
   }
 });
+
+test("a sign-in code on any page is finished at /auth/callback, not dropped", async ({ page }) => {
+  // Supabase's default email lands people on the Site URL with ?code=…; a bad code should say so.
+  const res = await page.request.get("/?code=not-a-real-code", { maxRedirects: 0 });
+  expect(res.status()).toBe(307);
+  expect(res.headers().location).toContain("/auth/callback?code=not-a-real-code&next=%2F");
+  await page.goto("/?code=not-a-real-code");
+  await expect(page).toHaveURL(/\/login\?error=link$/);
+  await expect(page.getByText("That sign-in link has expired or was already used.")).toBeVisible();
+});

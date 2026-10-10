@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { canSignIn, normalizeEmail } from "@/lib/access";
+import { originFromHeaders } from "@/lib/url";
 import { SUPPORT_EMAIL } from "@/lib/config";
 
 export type LoginState =
@@ -56,8 +57,7 @@ export async function requestMagicLink(_prev: LoginState, formData: FormData): P
     }
   }
 
-  const h = await headers();
-  const origin = process.env.NEXT_PUBLIC_APP_URL || `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+  const origin = originFromHeaders(await headers());
   const next = safeNext(parsed.data.next);
 
   const supabase = await createClient();

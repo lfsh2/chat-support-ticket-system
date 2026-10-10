@@ -5,13 +5,25 @@
  * Prefer the configured app URL, then the proxy's forwarded headers.
  */
 export function publicOrigin(request: Request, configured = process.env.NEXT_PUBLIC_APP_URL): string {
-  const fromEnv = configured?.trim().replace(/\/+$/, "");
-  if (fromEnv && /^https?:\/\/[^/]+$/.test(fromEnv)) return fromEnv;
+  return originFromHeaders(request.headers, request.url, configured);
+}
 
-  const host = request.headers.get("x-forwarded-host")?.split(",")[0].trim() || request.headers.get("host");
+/** Same, from a header list (server actions get `headers()`, not a Request). */
+export function originFromHeaders(
+  headers: Headers,
+  fallbackUrl?: string,
+  configured = process.env.NEXT_PUBLIC_APP_URL,
+): string {
+  const fromEnv = configured?.trim().replace(/\/+$/, "");
+  // An unfilled placeholder ("https://REPLACE-WITH-YOUR-APP-URL") is ignored rather than trusted.
+  if (fromEnv && /^https?:\/\/[^/]+$/.test(fromEnv) && !/replace-with/i.test(fromEnv)) return fromEnv;
+
+  const host = headers.get("x-forwarded-host")?.split(",")[0].trim() || headers.get("host");
   if (host) {
-    const proto = request.headers.get("x-forwarded-proto")?.split(",")[0].trim() || new URL(request.url).protocol.replace(":", "");
+    const proto =
+      headers.get("x-forwarded-proto")?.split(",")[0].trim() ||
+      (fallbackUrl ? new URL(fallbackUrl).protocol.replace(":", "") : "https");
     return `${proto}://${host}`;
   }
-  return new URL(request.url).origin;
+  return fallbackUrl ? new URL(fallbackUrl).origin : "";
 }
