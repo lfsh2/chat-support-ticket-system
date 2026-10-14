@@ -23,7 +23,7 @@ export async function GET() {
   try {
     const admin = createAdminClient();
     const [c, u] = await Promise.all([
-      admin.from("channels").select("id", { count: "exact", head: true }),
+      admin.from("channels").select("id", { count: "exact", head: true }).is("client_id", null),
       admin.from("profiles").select("id", { count: "exact", head: true }).like("email", "%@example.com"),
     ]);
     if (c.error) throw c.error;

@@ -11,7 +11,7 @@
     "test": "vitest run",
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --local > lib/database.types.ts",
+    "db:types": "supabase gen types typescript --local > lib/database.types.ts.tmp && mv lib/database.types.ts.tmp lib/database.types.ts || (rm -f lib/database.types.ts.tmp; exit 1)",
     "hub": "node --env-file-if-exists=.env.production.local scripts/access.mjs"
   },
   "dependencies": {

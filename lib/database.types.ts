@@ -25,16 +25,28 @@ export type Database = {
           Tables: {
             "channels": {
                   Row: {
-                    "archived_at": string | null,"description": string | null,"id": string,"name": string,"position": number,"program": Database["public"]['Enums']["program"] | null,"slug": string,"type": Database["public"]['Enums']["channel_type"]
+                    "archived_at": string | null,"client_id": string | null,"description": string | null,"id": string,"name": string,"parent_id": string | null,"position": number,"program": Database["public"]['Enums']["program"] | null,"slug": string,"type": Database["public"]['Enums']["channel_type"]
                   }
                   Insert: {
-                    "archived_at"?: string | null,"description"?: string | null,"id"?: string,"name": string,"position"?: number,"program"?: Database["public"]['Enums']["program"] | null,"slug": string,"type"?: Database["public"]['Enums']["channel_type"]
+                    "archived_at"?: string | null,"client_id"?: string | null,"description"?: string | null,"id"?: string,"name": string,"parent_id"?: string | null,"position"?: number,"program"?: Database["public"]['Enums']["program"] | null,"slug": string,"type"?: Database["public"]['Enums']["channel_type"]
                   }
                   Update: {
-                    "archived_at"?: string | null,"description"?: string | null,"id"?: string,"name"?: string,"position"?: number,"program"?: Database["public"]['Enums']["program"] | null,"slug"?: string,"type"?: Database["public"]['Enums']["channel_type"]
+                    "archived_at"?: string | null,"client_id"?: string | null,"description"?: string | null,"id"?: string,"name"?: string,"parent_id"?: string | null,"position"?: number,"program"?: Database["public"]['Enums']["program"] | null,"slug"?: string,"type"?: Database["public"]['Enums']["channel_type"]
                   }
                   Relationships: [
-                    
+                    {
+      foreignKeyName: "channels_client_id_fkey"
+      columns: ["client_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "channels_parent_id_fkey"
+      columns: ["parent_id"]
+isOneToOne: false
+      referencedRelation: "channels"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"events": {
                   Row: {
@@ -332,6 +344,12 @@ isOneToOne: false
               "channel_id": string,"unread": number
             }[]
                            },
+"client_channel_parent":
+{ Args: { "p": Database["public"]['Enums']["program"] }; Returns: string
+                           },
+"ensure_client_channel":
+{ Args: { "p": Database["public"]['Enums']["program"],"uid": string }; Returns: undefined
+                           },
 "has_any_access":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
@@ -354,6 +372,9 @@ isOneToOne: false
                            },
 "rate_ticket":
 { Args: { "score": number,"tid": string }; Returns: undefined
+                           },
+"slugify":
+{ Args: { "t": string }; Returns: string
                            }
           }
           Enums: {

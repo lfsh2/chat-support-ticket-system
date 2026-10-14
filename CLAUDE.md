@@ -404,6 +404,7 @@ Triggers: update `reply_count`; bump `tickets.updated_at`; set `first_response_a
 - `tasks` — internal team tasks (staff-only RLS): status `todo | in_progress | done`, priority, assignee, due date, optional `ticket_id`.
 - `events` — dashboard calendar: program-scoped (null = everyone), staff write, members read their programs.
 - Ticket RPCs/triggers: `open_ticket()` (atomic, 5/hour rate limit), `rate_ticket()`, system events on status/assignee/priority changes, client reply reopens, first staff reply opens, members can't reply on `closed`.
+- **Client channels** (`channels.parent_id` + `channels.client_id`, migration `20261014000001`): one private channel per client per program, nested under `#coachos-help` (CoachOS) or `#community` (Alive & Free). Auto-created when a membership grants access (`ensure_client_channel()`), renamed when the client's display name changes, visible only to that client and staff (`can_see_channel()`). Slugs are opaque (`client-<hash>`). Admins can rename/archive from the channel header.
 
 ---
 

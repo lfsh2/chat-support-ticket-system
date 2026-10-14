@@ -6,7 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/database.types";
 
 export type HubProfile = Pick<Tables<"profiles">, "id" | "email" | "display_name" | "avatar_url" | "role" | "timezone">;
-export type HubChannel = Pick<Tables<"channels">, "id" | "slug" | "name" | "description" | "program" | "type" | "position">;
+export type HubChannel = Pick<
+  Tables<"channels">,
+  "id" | "slug" | "name" | "description" | "program" | "type" | "position" | "parent_id" | "client_id"
+>;
 export type UnreadCounts = Record<string, number>;
 
 type HubContextValue = {

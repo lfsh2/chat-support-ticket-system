@@ -16,7 +16,7 @@ export default async function ChannelPage({ params }: PageProps<"/c/[slug]">) {
 
   const { data: channel } = await supabase
     .from("channels")
-    .select("id, slug, name, description, program, type")
+    .select("id, slug, name, description, program, type, parent_id, client_id")
     .eq("slug", slug)
     .is("archived_at", null)
     .maybeSingle();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Hash, Megaphone } from "lucide-react";
+import { Hash, Lock, Megaphone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TopBar } from "@/components/shell/top-bar";
 import { useHub, type HubChannel } from "@/components/shell/hub-context";
@@ -13,9 +13,10 @@ import { safeTimeZone } from "@/lib/time";
 import type { ChatMessage } from "@/lib/chat/types";
 import { PROGRAMS } from "@/lib/config";
 import { Composer, ReadOnlyNotice } from "./composer";
+import { ClientChannelMenu } from "./client-channel-menu";
 import { MessageList, type MessageListHandle } from "./message-list";
 
-type Channel = Pick<HubChannel, "id" | "slug" | "name" | "description" | "program" | "type">;
+type Channel = Pick<HubChannel, "id" | "slug" | "name" | "description" | "program" | "type" | "parent_id" | "client_id">;
 
 export function ChannelView({
   channel,
@@ -105,8 +106,10 @@ export function ChannelView({
   );
 
   const canPost = channel.type !== "announcement" || isStaff;
-  const Icon = channel.type === "announcement" ? Megaphone : Hash;
+  const isClientChannel = channel.client_id !== null;
+  const Icon = isClientChannel ? Lock : channel.type === "announcement" ? Megaphone : Hash;
   const program = channel.program ? PROGRAMS[channel.program] : null;
+  const canManage = isClientChannel && (profile.role === "admin" || profile.role === "owner");
 
   return (
     <>
@@ -115,13 +118,14 @@ export function ChannelView({
         title={
           <>
             <span className="text-muted-foreground font-sans text-[17px] font-medium" aria-hidden>
-              {channel.type === "announcement" ? "" : "#"}
+              {isClientChannel ? <Lock className="inline size-4 -translate-y-px" /> : channel.type === "announcement" ? "" : "#"}
             </span>
             <span className="truncate">{channel.name}</span>
             {program && <span className="sr-only">, {program.label}</span>}
           </>
         }
         subtitle={channel.description}
+        actions={canManage ? <ClientChannelMenu channel={channel} /> : undefined}
       />
 
       <MessageList
@@ -143,17 +147,22 @@ export function ChannelView({
           <div className="px-4 pt-10 pb-2 md:px-6 md:pt-14">
             <p className="note text-muted-foreground flex items-center gap-2 text-[15px]">
               <Icon className="size-4 not-italic" aria-hidden />
-              {program ? `${program.label} members` : "Everyone in the hub"}
+              {isClientChannel ? `Private · ${program?.label}` : program ? `${program.label} members` : "Everyone in the hub"}
             </p>
             <h2 className="font-display mt-1 text-[34px] leading-[1.05] tracking-tight md:text-[44px]">
               The start of {channel.type === "announcement" ? "" : "#"}
               {channel.name}
             </h2>
             <p className="text-muted-foreground mt-3 max-w-prose text-[15px] leading-relaxed">
-              {channel.description ? `${channel.description}. ` : ""}
-              {canPost
-                ? "Say hello, ask a question, or share what you're working on."
-                : "The team posts news and updates here. React to let us know you've seen them."}
+              {isClientChannel
+                ? channel.client_id === profile.id
+                  ? "Your private space with the Alive + Free team. Only you and the team can see it, so share anything about your setup, your questions or your plans."
+                  : "Only this client and the team can see this channel."
+                : `${channel.description ? `${channel.description}. ` : ""}${
+                    canPost
+                      ? "Say hello, ask a question, or share what you're working on."
+                      : "The team posts news and updates here. React to let us know you've seen them."
+                  }`}
             </p>
           </div>
         }

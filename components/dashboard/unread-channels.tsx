@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Hash, Megaphone } from "lucide-react";
+import { Hash, Lock, Megaphone } from "lucide-react";
 import { useHub } from "@/components/shell/hub-context";
 import { formatCount } from "@/components/shell/channel-nav";
 import { PROGRAMS } from "@/lib/config";
@@ -28,7 +28,7 @@ export function UnreadChannels({ limit = 5 }: { limit?: number }) {
   return (
     <ul>
       {busy.map((c) => {
-        const Icon = c.type === "announcement" ? Megaphone : Hash;
+        const Icon = c.client_id ? Lock : c.type === "announcement" ? Megaphone : Hash;
         return (
           <li key={c.id} className="border-rule border-b last:border-0">
             <Link href={`/c/${c.slug}`} className="hover:bg-muted/60 -mx-2 flex min-h-12 items-center gap-3 rounded-md px-2">
