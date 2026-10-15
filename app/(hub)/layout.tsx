@@ -6,7 +6,7 @@ export default async function HubLayout({ children }: LayoutProps<"/">) {
   const [{ data: channels }, { data: unread }] = await Promise.all([
     supabase
       .from("channels")
-      .select("id, slug, name, description, program, type, position, parent_id, client_id")
+      .select("id, slug, name, description, program, type, position, parent_id, client_id, staff_only")
       .is("archived_at", null)
       .order("position")
       .order("name"),

@@ -8,7 +8,7 @@ import type { Tables } from "@/lib/database.types";
 export type HubProfile = Pick<Tables<"profiles">, "id" | "email" | "display_name" | "avatar_url" | "role" | "timezone">;
 export type HubChannel = Pick<
   Tables<"channels">,
-  "id" | "slug" | "name" | "description" | "program" | "type" | "position" | "parent_id" | "client_id"
+  "id" | "slug" | "name" | "description" | "program" | "type" | "position" | "parent_id" | "client_id" | "staff_only"
 >;
 export type UnreadCounts = Record<string, number>;
 

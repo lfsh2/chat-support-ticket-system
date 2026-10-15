@@ -3,6 +3,11 @@ import type { ChatMessage } from "./types";
 
 export const GROUP_WINDOW_MS = 5 * 60 * 1000;
 
+/** Emails from people without an account share author_id null; their sender tells them apart. */
+function senderOf(m: ChatMessage) {
+  return (m.meta as { sender_email?: string } | null)?.sender_email ?? null;
+}
+
 export type ListItem =
   | { type: "date"; key: string; date: Date }
   | { type: "unread"; key: "unread" }
@@ -50,6 +55,7 @@ export function buildListItems(
       (prev.author_id !== msg.author_id ||
         prev.kind !== "user" ||
         msg.kind !== "user" ||
+        senderOf(prev) !== senderOf(msg) ||
         prev.deleted_at != null ||
         at.getTime() - prevAt.getTime() > GROUP_WINDOW_MS)
     ) {

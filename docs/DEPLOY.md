@@ -104,9 +104,32 @@ inbox (a placeholder), `pnpm hub link <email>` prints a one-time sign-in link in
 4. Add a calendar event for that program; the client sees it on their dashboard.
 5. `pnpm hub revoke` the test client → their next page load shows "access ended".
 
+## 8. Connect the CoachOS mailbox (Gmail)
+
+Every email to coachos@aliveandfreeconsulting.com then shows up in **#coachos-email-ticket**
+(team only): clients' emails open tickets, anyone else gets a card. Team replies on a
+ticket are emailed back from coachos@, in the same Gmail thread.
+
+1. **Google Cloud** (signed in as an aliveandfreeconsulting.com admin):
+   create a project → enable the **Gmail API** → **OAuth consent screen**: type **Internal** →
+   **Credentials → Create OAuth client ID → Web application** with redirect URIs
+   `https://<your hub domain>/api/gmail/callback` and `http://localhost:3000/api/gmail/callback`.
+2. **DigitalOcean env vars** (Run time; tick Encrypt on the secrets): `GOOGLE_CLIENT_ID`,
+   `GOOGLE_CLIENT_SECRET`, `MAIL_TOKEN_KEY` (`openssl rand -base64 32`), `CRON_SECRET`
+   (`openssl rand -hex 24`), `MAIL_INBOX_ADDRESS=coachos@aliveandfreeconsulting.com`. Redeploy.
+3. **Every-minute check:** in Supabase → SQL Editor, run `supabase/mail-cron.sql` with your app
+   URL and the same `CRON_SECRET`.
+4. **Connect:** as an admin, open **#coachos-email-ticket → Connect Gmail** and sign in as
+   coachos@aliveandfreeconsulting.com. Only that account is accepted. From then on, new mail
+   appears within a minute (or press **Check now**). Mail that arrived before connecting isn't
+   imported.
+
+Replies are only queued for email while the mailbox is connected, and anything that couldn't
+be sent within a day is dropped rather than sent late.
+
 ## Not built yet (plan around these)
 
-- **No email notifications** for new tickets or replies yet — the team needs to check the
-  dashboard, and clients see replies when they open the hub.
+- **Email notifications** only go out through the CoachOS mailbox (step 8): team replies and
+  "resolved" notices on tickets. There are no other notification emails yet.
 - **No Stripe sync** — paying doesn't grant access automatically; use `pnpm hub grant`.
 - **No admin Members screen**, Inbox, threads or @mentions yet.

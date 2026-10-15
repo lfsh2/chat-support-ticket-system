@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Hash, Lock, Megaphone } from "lucide-react";
+import { ChevronRight, Hash, Inbox, Lock, Megaphone } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   SidebarGroup,
@@ -84,7 +84,7 @@ export function ChannelNav({ onNavigate, tabbed = false }: { onNavigate?: () => 
                     const count = unread[c.id] ?? 0;
                     const active = isActivePath(pathname, href);
                     const hasUnread = count > 0 && !active;
-                    const Icon = c.type === "announcement" ? Megaphone : Hash;
+                    const Icon = c.staff_only ? Inbox : c.type === "announcement" ? Megaphone : Hash;
                     const clients = channels.filter((x) => x.parent_id === c.id);
                     return (
                       <SidebarMenuItem key={c.id}>

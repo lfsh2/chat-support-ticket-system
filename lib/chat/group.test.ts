@@ -21,6 +21,7 @@ function msg(author: string, iso: string, extra: Partial<ChatMessage> = {}): Cha
     created_at: iso,
     author: null,
     reactions: [],
+    meta: null,
     ...extra,
   };
 }

@@ -32,11 +32,14 @@ export function TicketView({
   ticket,
   initialMessages,
   panel,
+  emailTo = null,
 }: {
   ticket: TicketDetail;
   initialMessages: ChatMessage[];
   /** Staff only: data for the workspace panel. */
   panel: TicketPanelData | null;
+  /** Staff only: the client's address when replies are also sent by email. */
+  emailTo?: string | null;
 }) {
   const { profile, isStaff } = useHub();
   const router = useRouter();
@@ -238,6 +241,9 @@ export function TicketView({
                   Internal note
                 </ToggleGroupItem>
               </ToggleGroup>
+            )}
+            {isStaff && emailTo && mode === "user" && (
+              <p className="text-muted-foreground mb-1.5 text-xs">Your reply will also be emailed to {emailTo} from the CoachOS inbox.</p>
             )}
           </Composer>
         )}

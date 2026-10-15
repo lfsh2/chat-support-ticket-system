@@ -25,13 +25,13 @@ export type Database = {
           Tables: {
             "channels": {
                   Row: {
-                    "archived_at": string | null,"client_id": string | null,"description": string | null,"id": string,"name": string,"parent_id": string | null,"position": number,"program": Database["public"]['Enums']["program"] | null,"slug": string,"type": Database["public"]['Enums']["channel_type"]
+                    "archived_at": string | null,"client_id": string | null,"description": string | null,"id": string,"name": string,"parent_id": string | null,"position": number,"program": Database["public"]['Enums']["program"] | null,"slug": string,"staff_only": boolean,"type": Database["public"]['Enums']["channel_type"]
                   }
                   Insert: {
-                    "archived_at"?: string | null,"client_id"?: string | null,"description"?: string | null,"id"?: string,"name": string,"parent_id"?: string | null,"position"?: number,"program"?: Database["public"]['Enums']["program"] | null,"slug": string,"type"?: Database["public"]['Enums']["channel_type"]
+                    "archived_at"?: string | null,"client_id"?: string | null,"description"?: string | null,"id"?: string,"name": string,"parent_id"?: string | null,"position"?: number,"program"?: Database["public"]['Enums']["program"] | null,"slug": string,"staff_only"?: boolean,"type"?: Database["public"]['Enums']["channel_type"]
                   }
                   Update: {
-                    "archived_at"?: string | null,"client_id"?: string | null,"description"?: string | null,"id"?: string,"name"?: string,"parent_id"?: string | null,"position"?: number,"program"?: Database["public"]['Enums']["program"] | null,"slug"?: string,"type"?: Database["public"]['Enums']["channel_type"]
+                    "archived_at"?: string | null,"client_id"?: string | null,"description"?: string | null,"id"?: string,"name"?: string,"parent_id"?: string | null,"position"?: number,"program"?: Database["public"]['Enums']["program"] | null,"slug"?: string,"staff_only"?: boolean,"type"?: Database["public"]['Enums']["channel_type"]
                   }
                   Relationships: [
                     {
@@ -45,6 +45,31 @@ isOneToOne: false
       columns: ["parent_id"]
 isOneToOne: false
       referencedRelation: "channels"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"email_outbox": {
+                  Row: {
+                    "attempts": number,"created_at": string,"gmail_message_id": string | null,"id": string,"kind": string,"last_error": string | null,"message_id": string | null,"sent_at": string | null,"status": string,"ticket_id": string
+                  }
+                  Insert: {
+                    "attempts"?: number,"created_at"?: string,"gmail_message_id"?: string | null,"id"?: string,"kind": string,"last_error"?: string | null,"message_id"?: string | null,"sent_at"?: string | null,"status"?: string,"ticket_id": string
+                  }
+                  Update: {
+                    "attempts"?: number,"created_at"?: string,"gmail_message_id"?: string | null,"id"?: string,"kind"?: string,"last_error"?: string | null,"message_id"?: string | null,"sent_at"?: string | null,"status"?: string,"ticket_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "email_outbox_message_id_fkey"
+      columns: ["message_id"]
+isOneToOne: true
+      referencedRelation: "messages"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "email_outbox_ticket_id_fkey"
+      columns: ["ticket_id"]
+isOneToOne: false
+      referencedRelation: "tickets"
       referencedColumns: ["id"]
     }
                   ]
@@ -67,6 +92,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"inbound_emails": {
+                  Row: {
+                    "body_text": string | null,"created_at": string,"from_email": string,"from_name": string | null,"gmail_message_id": string,"gmail_thread_id": string,"hub_message_id": string | null,"id": string,"ignore_reason": string | null,"message_id_header": string | null,"received_at": string | null,"status": string,"subject": string | null,"ticket_id": string | null
+                  }
+                  Insert: {
+                    "body_text"?: string | null,"created_at"?: string,"from_email": string,"from_name"?: string | null,"gmail_message_id": string,"gmail_thread_id": string,"hub_message_id"?: string | null,"id"?: string,"ignore_reason"?: string | null,"message_id_header"?: string | null,"received_at"?: string | null,"status": string,"subject"?: string | null,"ticket_id"?: string | null
+                  }
+                  Update: {
+                    "body_text"?: string | null,"created_at"?: string,"from_email"?: string,"from_name"?: string | null,"gmail_message_id"?: string,"gmail_thread_id"?: string,"hub_message_id"?: string | null,"id"?: string,"ignore_reason"?: string | null,"message_id_header"?: string | null,"received_at"?: string | null,"status"?: string,"subject"?: string | null,"ticket_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "inbound_emails_hub_message_id_fkey"
+      columns: ["hub_message_id"]
+isOneToOne: false
+      referencedRelation: "messages"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "inbound_emails_ticket_id_fkey"
+      columns: ["ticket_id"]
+isOneToOne: false
+      referencedRelation: "tickets"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"kb_articles": {
                   Row: {
                     "body_md": string,"category": Database["public"]['Enums']["ticket_category"] | null,"id": string,"program": Database["public"]['Enums']["program"] | null,"published": boolean | null,"search": unknown,"slug": string,"title": string,"updated_at": string | null
@@ -79,6 +129,44 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"mail_connections": {
+                  Row: {
+                    "connected_at": string,"connected_by": string | null,"email": string,"history_id": string | null,"id": string,"last_error": string | null,"last_synced_at": string | null,"provider": string,"refresh_token_enc": string,"sync_started_at": string | null
+                  }
+                  Insert: {
+                    "connected_at"?: string,"connected_by"?: string | null,"email": string,"history_id"?: string | null,"id"?: string,"last_error"?: string | null,"last_synced_at"?: string | null,"provider"?: string,"refresh_token_enc": string,"sync_started_at"?: string | null
+                  }
+                  Update: {
+                    "connected_at"?: string,"connected_by"?: string | null,"email"?: string,"history_id"?: string | null,"id"?: string,"last_error"?: string | null,"last_synced_at"?: string | null,"provider"?: string,"refresh_token_enc"?: string,"sync_started_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "mail_connections_connected_by_fkey"
+      columns: ["connected_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"mail_threads": {
+                  Row: {
+                    "created_at": string,"gmail_thread_id": string,"last_message_id_header": string | null,"subject": string,"ticket_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"gmail_thread_id": string,"last_message_id_header"?: string | null,"subject": string,"ticket_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"gmail_thread_id"?: string,"last_message_id_header"?: string | null,"subject"?: string,"ticket_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "mail_threads_ticket_id_fkey"
+      columns: ["ticket_id"]
+isOneToOne: true
+      referencedRelation: "tickets"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"memberships": {
                   Row: {
@@ -101,13 +189,13 @@ isOneToOne: false
                   ]
                 },"messages": {
                   Row: {
-                    "attachments": NonNullable<Json>,"author_id": string | null,"body": string,"channel_id": string | null,"created_at": string | null,"deleted_at": string | null,"edited_at": string | null,"id": string,"kind": string,"parent_id": string | null,"reply_count": number,"ticket_id": string | null,"via": string
+                    "attachments": NonNullable<Json>,"author_id": string | null,"body": string,"channel_id": string | null,"created_at": string | null,"deleted_at": string | null,"edited_at": string | null,"id": string,"kind": string,"meta": Json | null,"parent_id": string | null,"reply_count": number,"ticket_id": string | null,"via": string
                   }
                   Insert: {
-                    "attachments"?: NonNullable<Json>,"author_id"?: string | null,"body": string,"channel_id"?: string | null,"created_at"?: string | null,"deleted_at"?: string | null,"edited_at"?: string | null,"id"?: string,"kind"?: string,"parent_id"?: string | null,"reply_count"?: number,"ticket_id"?: string | null,"via"?: string
+                    "attachments"?: NonNullable<Json>,"author_id"?: string | null,"body": string,"channel_id"?: string | null,"created_at"?: string | null,"deleted_at"?: string | null,"edited_at"?: string | null,"id"?: string,"kind"?: string,"meta"?: Json | null,"parent_id"?: string | null,"reply_count"?: number,"ticket_id"?: string | null,"via"?: string
                   }
                   Update: {
-                    "attachments"?: NonNullable<Json>,"author_id"?: string | null,"body"?: string,"channel_id"?: string | null,"created_at"?: string | null,"deleted_at"?: string | null,"edited_at"?: string | null,"id"?: string,"kind"?: string,"parent_id"?: string | null,"reply_count"?: number,"ticket_id"?: string | null,"via"?: string
+                    "attachments"?: NonNullable<Json>,"author_id"?: string | null,"body"?: string,"channel_id"?: string | null,"created_at"?: string | null,"deleted_at"?: string | null,"edited_at"?: string | null,"id"?: string,"kind"?: string,"meta"?: Json | null,"parent_id"?: string | null,"reply_count"?: number,"ticket_id"?: string | null,"via"?: string
                   }
                   Relationships: [
                     {
@@ -301,13 +389,13 @@ isOneToOne: false
                   ]
                 },"tickets": {
                   Row: {
-                    "assignee_id": string | null,"category": Database["public"]['Enums']["ticket_category"],"created_at": string | null,"first_response_at": string | null,"id": string,"number": number,"priority": Database["public"]['Enums']["ticket_priority"],"program": Database["public"]['Enums']["program"],"requester_id": string,"resolved_at": string | null,"satisfaction": number | null,"status": Database["public"]['Enums']["ticket_status"],"subject": string,"updated_at": string | null
+                    "assignee_id": string | null,"category": Database["public"]['Enums']["ticket_category"],"created_at": string | null,"first_response_at": string | null,"id": string,"number": number,"priority": Database["public"]['Enums']["ticket_priority"],"program": Database["public"]['Enums']["program"],"requester_id": string,"resolved_at": string | null,"satisfaction": number | null,"source": string,"status": Database["public"]['Enums']["ticket_status"],"subject": string,"updated_at": string | null
                   }
                   Insert: {
-                    "assignee_id"?: string | null,"category": Database["public"]['Enums']["ticket_category"],"created_at"?: string | null,"first_response_at"?: string | null,"id"?: string,"number"?: number,"priority"?: Database["public"]['Enums']["ticket_priority"],"program": Database["public"]['Enums']["program"],"requester_id": string,"resolved_at"?: string | null,"satisfaction"?: number | null,"status"?: Database["public"]['Enums']["ticket_status"],"subject": string,"updated_at"?: string | null
+                    "assignee_id"?: string | null,"category": Database["public"]['Enums']["ticket_category"],"created_at"?: string | null,"first_response_at"?: string | null,"id"?: string,"number"?: number,"priority"?: Database["public"]['Enums']["ticket_priority"],"program": Database["public"]['Enums']["program"],"requester_id": string,"resolved_at"?: string | null,"satisfaction"?: number | null,"source"?: string,"status"?: Database["public"]['Enums']["ticket_status"],"subject": string,"updated_at"?: string | null
                   }
                   Update: {
-                    "assignee_id"?: string | null,"category"?: Database["public"]['Enums']["ticket_category"],"created_at"?: string | null,"first_response_at"?: string | null,"id"?: string,"number"?: number,"priority"?: Database["public"]['Enums']["ticket_priority"],"program"?: Database["public"]['Enums']["program"],"requester_id"?: string,"resolved_at"?: string | null,"satisfaction"?: number | null,"status"?: Database["public"]['Enums']["ticket_status"],"subject"?: string,"updated_at"?: string | null
+                    "assignee_id"?: string | null,"category"?: Database["public"]['Enums']["ticket_category"],"created_at"?: string | null,"first_response_at"?: string | null,"id"?: string,"number"?: number,"priority"?: Database["public"]['Enums']["ticket_priority"],"program"?: Database["public"]['Enums']["program"],"requester_id"?: string,"resolved_at"?: string | null,"satisfaction"?: number | null,"source"?: string,"status"?: Database["public"]['Enums']["ticket_status"],"subject"?: string,"updated_at"?: string | null
                   }
                   Relationships: [
                     {
@@ -361,6 +449,11 @@ isOneToOne: false
                            },
 "is_staff":
 { Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"mail_connection_status":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "connected_at": string,"email": string,"last_error": string,"last_synced_at": string
+            }[]
                            },
 "mark_channel_read":
 { Args: { "cid": string }; Returns: undefined

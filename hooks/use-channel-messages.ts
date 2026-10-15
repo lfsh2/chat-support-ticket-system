@@ -144,6 +144,7 @@ export function useMessages({
               deleted_at: row.deleted_at,
               reply_count: row.reply_count,
               attachments: row.attachments as Attachment[],
+              meta: row.meta,
             }),
             row.id,
           );
@@ -258,6 +259,7 @@ export function useMessages({
         edited_at: null,
         deleted_at: null,
         created_at: new Date().toISOString(),
+        meta: null,
         author: me,
         reactions: [],
         status: "sending",

@@ -38,7 +38,7 @@ export const PRIORITY_RANK: Record<TicketPriority, number> = { normal: 0, high: 
 type Person = Pick<Tables<"profiles">, "id" | "display_name" | "avatar_url">;
 
 export const TICKET_LIST_SELECT =
-  "id, number, subject, status, priority, program, category, created_at, updated_at, requester_id, assignee_id, requester:profiles!tickets_requester_id_fkey(id, display_name, avatar_url), assignee:profiles!tickets_assignee_id_fkey(id, display_name, avatar_url)" as const;
+  "id, number, subject, status, priority, program, category, source, created_at, updated_at, requester_id, assignee_id, requester:profiles!tickets_requester_id_fkey(id, display_name, avatar_url), assignee:profiles!tickets_assignee_id_fkey(id, display_name, avatar_url)" as const;
 
 export type TicketListRow = Pick<
   Tables<"tickets">,
@@ -49,6 +49,7 @@ export type TicketListRow = Pick<
   | "priority"
   | "program"
   | "category"
+  | "source"
   | "created_at"
   | "updated_at"
   | "requester_id"

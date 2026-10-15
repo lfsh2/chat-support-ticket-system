@@ -40,7 +40,7 @@ export default async function TicketPage({ params }: PageProps<"/dashboard/ticke
     return <TicketView key={ticket.id} ticket={ticket} initialMessages={(messages ?? []) as unknown as ChatMessage[]} panel={null} />;
   }
 
-  const [{ data: messages }, { data: staff }, { data: memberships }, { data: past }, { data: tasks }] = await Promise.all([
+  const [{ data: messages }, { data: staff }, { data: memberships }, { data: past }, { data: tasks }, { data: mailbox }] = await Promise.all([
     messagesQuery,
     supabase.from("profiles").select("id, display_name, avatar_url").in("role", STAFF_ROLES).order("display_name"),
     supabase.from("memberships").select("program, status, grace_until").eq("user_id", ticket.requester_id),
@@ -51,7 +51,10 @@ export default async function TicketPage({ params }: PageProps<"/dashboard/ticke
       .order("updated_at", { ascending: false })
       .limit(7),
     supabase.from("tasks").select(TASK_SELECT).eq("ticket_id", ticket.id).order("created_at"),
+    supabase.rpc("mail_connection_status"),
   ]);
+  // Team replies are emailed to the client once the CoachOS mailbox is connected.
+  const emailTo = mailbox?.length && ticket.requester?.email ? ticket.requester.email : null;
 
   const panel: TicketPanelData = {
     ticket,
@@ -65,5 +68,13 @@ export default async function TicketPage({ params }: PageProps<"/dashboard/ticke
     today: dayKey(new Date(), safeTimeZone(profile.timezone)),
   };
 
-  return <TicketView key={ticket.id} ticket={ticket} initialMessages={(messages ?? []) as unknown as ChatMessage[]} panel={panel} />;
+  return (
+    <TicketView
+      key={ticket.id}
+      ticket={ticket}
+      initialMessages={(messages ?? []) as unknown as ChatMessage[]}
+      panel={panel}
+      emailTo={emailTo}
+    />
+  );
 }

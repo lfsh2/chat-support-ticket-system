@@ -1,8 +1,12 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { headers } from "next/headers";
 import { z } from "zod";
+import { syncMailbox } from "@/lib/gmail/sync";
 import { requireHubAccess } from "@/lib/session";
+import { createAdminClient } from "@/lib/supabase/server";
+import { originFromHeaders } from "@/lib/url";
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -55,5 +59,47 @@ export async function archiveClientChannel(id: string): Promise<Result> {
     .not("client_id", "is", null)
     .select("id");
   if (error || !data?.length) return { ok: false, error: "We couldn't archive it. Please try again." };
+  return { ok: true };
+}
+
+const STAFF_ROLES = new Set(["agent", "admin", "owner"]);
+
+/** Staff: check the CoachOS mailbox now instead of waiting for the next minute. */
+export async function syncMailNow(): Promise<Result & { summary?: string }> {
+  const { profile } = await requireHubAccess();
+  if (!STAFF_ROLES.has(profile.role)) return { ok: false, error: "Only the team can do that." };
+  const report = await syncMailbox(createAdminClient(), originFromHeaders(await headers()));
+  refresh();
+  switch (report.status) {
+    case "not_connected":
+      return { ok: false, error: "The CoachOS mailbox isn't connected yet." };
+    case "busy":
+      return { ok: true, summary: "A check is already running. New mail will appear in a moment." };
+    case "error":
+      return { ok: false, error: `Gmail said: ${report.error}` };
+    case "started":
+      return { ok: true, summary: "Connected. New emails from now on will appear here." };
+    case "ok": {
+      const n = report.read;
+      return { ok: true, summary: n === 0 ? "No new email." : `Checked ${n} new ${n === 1 ? "email" : "emails"}.` };
+    }
+  }
+}
+
+/** Staff: mark an email card (someone who isn't a client) as dealt with. */
+export async function markEmailHandled(inboundId: string, messageId: string): Promise<Result> {
+  if (!z.uuid().safeParse(inboundId).success || !z.uuid().safeParse(messageId).success) return { ok: false, error: "Something went wrong." };
+  const { profile } = await requireHubAccess();
+  if (!STAFF_ROLES.has(profile.role)) return { ok: false, error: "Only the team can do that." };
+  const db = createAdminClient();
+
+  const { data: msg } = await db.from("messages").select("meta, kind").eq("id", messageId).maybeSingle();
+  if (!msg || msg.kind !== "email") return { ok: false, error: "That email card is gone." };
+  const meta = { ...(msg.meta as Record<string, unknown>), handled_by: profile.display_name, handled_at: new Date().toISOString() };
+  const [{ error: e1 }, { error: e2 }] = await Promise.all([
+    db.from("inbound_emails").update({ status: "handled" }).eq("id", inboundId).eq("status", "unmatched"),
+    db.from("messages").update({ meta }).eq("id", messageId),
+  ]);
+  if (e1 || e2) return { ok: false, error: "That didn't save. Please try again." };
   return { ok: true };
 }

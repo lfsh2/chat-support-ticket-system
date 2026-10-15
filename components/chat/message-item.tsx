@@ -98,7 +98,9 @@ export const MessageItem = memo(function MessageItem({
   const note = message.kind === "internal_note";
   const deleted = message.deleted_at != null;
   const at = new Date(message.created_at ?? 0);
-  const authorName = message.author?.display_name ?? "Someone";
+  // Email from someone without an account (or the team replying in Gmail) carries its sender in meta.
+  const sender = (message.meta as { sender?: string } | null)?.sender;
+  const authorName = message.author?.display_name ?? sender ?? "Someone";
   const settled = !message.status;
 
   const handlers: MessageActionHandlers = {
@@ -154,6 +156,7 @@ export const MessageItem = memo(function MessageItem({
             <time dateTime={message.created_at ?? undefined} className="text-muted-foreground text-xs tabular-nums">
               {formatTime(at, timeZone)}
             </time>
+            {message.via === "email" && <span className="text-muted-foreground border-rule rounded-[4px] border px-1 text-[11px] leading-4">via email</span>}
             {note && <span className="text-warning text-xs font-semibold">Internal note · only the team sees this</span>}
           </div>
         )}
