@@ -17,7 +17,7 @@ import {
   type TicketListRow,
 } from "@/lib/tickets";
 import { cn } from "@/lib/utils";
-import { Mail } from "lucide-react";
+import { Mail, MessageSquare } from "lucide-react";
 import { QueueFilters } from "./queue-filters";
 
 /** The team's ticket queue: view chips, program/priority filters, oldest-waiting first. */
@@ -77,7 +77,7 @@ export async function StaffQueue({ view, program, priority }: { view: QueueView;
                     <div className="flex items-center gap-2">
                       <span className="truncate text-[15px] font-semibold">{t.subject}</span>
                       <PriorityTag priority={t.priority} />
-                      {t.source === "email" && <EmailTag />}
+                      <SourceTag source={t.source} />
                     </div>
                     <p className="text-muted-foreground mt-0.5 truncate text-[13px]">
                       #{t.number} · {t.requester?.display_name ?? "Client"} · {CATEGORY_LABEL[t.category]}
@@ -127,7 +127,7 @@ export async function StaffQueue({ view, program, priority }: { view: QueueView;
                     >
                       <span className="truncate text-[15px] font-semibold">{t.subject}</span>
                       <PriorityTag priority={t.priority} />
-                      {t.source === "email" && <EmailTag />}
+                      <SourceTag source={t.source} />
                     </Link>
                     <div className="mt-1 flex items-center gap-3">
                       <ProgramTag program={t.program} />
@@ -178,10 +178,13 @@ export async function StaffQueue({ view, program, priority }: { view: QueueView;
   );
 }
 
-function EmailTag() {
+/** Where a ticket came from, when it wasn't the web form. */
+function SourceTag({ source }: { source: string }) {
+  if (source !== "email" && source !== "chat") return null;
+  const Icon = source === "email" ? Mail : MessageSquare;
   return (
     <span className="text-muted-foreground border-rule inline-flex shrink-0 items-center gap-1 rounded-[4px] border px-1.5 text-[11px] leading-[18px]">
-      <Mail className="size-3" aria-hidden /> Email
+      <Icon className="size-3" aria-hidden /> {source === "email" ? "Email" : "Chat"}
     </span>
   );
 }

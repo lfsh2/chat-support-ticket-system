@@ -15,6 +15,7 @@ import { PROGRAMS } from "@/lib/config";
 import { Composer, ReadOnlyNotice } from "./composer";
 import { ClientChannelMenu } from "./client-channel-menu";
 import { MailboxStatus } from "./mailbox-status";
+import { TicketFromMessageDialog } from "@/components/tickets/ticket-from-message-dialog";
 import { MessageList, type MessageListHandle } from "./message-list";
 
 type Channel = Pick<HubChannel, "id" | "slug" | "name" | "description" | "program" | "type" | "parent_id" | "client_id" | "staff_only">;
@@ -106,6 +107,13 @@ export function ChannelView({
     [chat],
   );
 
+  // Team: a client's message (or anything in a client's private channel) can become a ticket.
+  const [ticketFrom, setTicketFrom] = useState<ChatMessage | null>(null);
+  const canCreateTicket = useCallback(
+    (m: ChatMessage) => m.kind === "user" && (channel.client_id !== null || m.author?.role === "member"),
+    [channel.client_id],
+  );
+
   const canPost = channel.type !== "announcement" || isStaff;
   const isClientChannel = channel.client_id !== null;
   const Icon = isClientChannel ? Lock : channel.staff_only ? Inbox : channel.type === "announcement" ? Megaphone : Hash;
@@ -153,6 +161,8 @@ export function ChannelView({
         onEdit={chat.edit}
         onDelete={chat.remove}
         onRetry={chat.retry}
+        onCreateTicket={isStaff ? setTicketFrom : undefined}
+        canCreateTicket={canCreateTicket}
         intro={
           <div className="px-4 pt-10 pb-2 md:px-6 md:pt-14">
             <p className="note text-muted-foreground flex items-center gap-2 text-[15px]">
@@ -185,6 +195,8 @@ export function ChannelView({
           </div>
         }
       />
+
+      {isStaff && <TicketFromMessageDialog message={ticketFrom} onOpenChange={(open) => !open && setTicketFrom(null)} />}
 
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {announcement}

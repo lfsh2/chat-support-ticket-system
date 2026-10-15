@@ -3,6 +3,8 @@
 import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
+import { membershipGrantsAccess, type Program } from "@/lib/access";
+import { Constants } from "@/lib/database.types";
 import { syncMailbox } from "@/lib/gmail/sync";
 import { requireHubAccess } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -102,4 +104,104 @@ export async function markEmailHandled(inboundId: string, messageId: string): Pr
   ]);
   if (e1 || e2) return { ok: false, error: "That didn't save. Please try again." };
   return { ok: true };
+}
+
+const fromChat = z.object({
+  messageId: z.uuid(),
+  subject: z
+    .string()
+    .trim()
+    .min(3, "Add a short subject (at least 3 characters).")
+    .max(160, "Keep the subject under 160 characters."),
+  category: z.enum(Constants.public.Enums.ticket_category),
+  priority: z.enum(Constants.public.Enums.ticket_priority),
+  assignToMe: z.boolean(),
+});
+export type TicketFromChatInput = z.input<typeof fromChat>;
+
+/**
+ * Team: open a ticket for a client from a chat message (in their private channel, or a
+ * client's own message anywhere). The message is copied in as the ticket's first message,
+ * the chat message is marked with the ticket number, and the channel gets a short note.
+ */
+export async function createTicketFromMessage(input: TicketFromChatInput): Promise<Result & { number?: number }> {
+  const parsed = fromChat.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  const { profile } = await requireHubAccess();
+  if (!STAFF_ROLES.has(profile.role)) return { ok: false, error: "Only the team can create tickets from chat." };
+  const { messageId, subject, category, priority, assignToMe } = parsed.data;
+  const db = createAdminClient();
+
+  const { data: msg } = await db
+    .from("messages")
+    .select(
+      "id, channel_id, author_id, body, attachments, kind, deleted_at, meta, created_at, channel:channels!messages_channel_id_fkey(id, name, program, client_id), author:profiles!messages_author_id_fkey(id, role)",
+    )
+    .eq("id", messageId)
+    .maybeSingle();
+  const channel = msg?.channel as { id: string; name: string; program: Program | null; client_id: string | null } | null;
+  const author = msg?.author as { id: string; role: string } | null;
+  if (!msg || !channel || msg.kind !== "user" || msg.deleted_at) return { ok: false, error: "That message can't be turned into a ticket." };
+  const existing = (msg.meta as { ticket?: { number: number } } | null)?.ticket;
+  if (existing) return { ok: false, error: `This message is already ticket #${existing.number}.` };
+
+  // Who the ticket is for: the channel's client, or the client who wrote it.
+  const requesterId = channel.client_id ?? (author?.role === "member" ? author.id : null);
+  if (!requesterId) return { ok: false, error: "Pick a client's message, or a message in their private channel." };
+  const { data: memberships } = await db.from("memberships").select("program, status, grace_until").eq("user_id", requesterId);
+  const live = (memberships ?? []).filter((m) => membershipGrantsAccess(m)).map((m) => m.program);
+  if (live.length === 0) return { ok: false, error: "This client doesn't have an active program." };
+  const program = channel.program && live.includes(channel.program) ? channel.program : live.includes("coachos") ? "coachos" : live[0];
+
+  const { data: ticket, error } = await db
+    .from("tickets")
+    .insert({
+      requester_id: requesterId,
+      program,
+      category,
+      priority,
+      subject,
+      source: "chat",
+      assignee_id: assignToMe ? profile.id : null,
+      status: assignToMe ? "open" : "new",
+    })
+    .select("id, number")
+    .single();
+  if (error || !ticket) return { ok: false, error: "We couldn't open the ticket. Please try again." };
+
+  // One insert each: a multi-row insert would null out the columns some rows leave to their defaults.
+  const inserts = [
+    db.from("messages").insert({
+      ticket_id: ticket.id,
+      author_id: msg.author_id,
+      kind: "user",
+      via: "chat",
+      body: msg.body,
+      attachments: msg.attachments,
+      meta: { from_channel: channel.name, from_message_id: msg.id },
+      created_at: msg.created_at,
+    }),
+    db.from("messages").insert({ ticket_id: ticket.id, author_id: profile.id, kind: "system", body: `opened this ticket from #${channel.name}` }),
+  ];
+  for (const { error: e } of await Promise.all(inserts)) {
+    if (e) {
+      await db.from("tickets").delete().eq("id", ticket.id); // don't leave an empty ticket behind
+      return { ok: false, error: "We couldn't copy the message into the ticket. Please try again." };
+    }
+  }
+  await db
+    .from("messages")
+    .insert({ channel_id: channel.id, author_id: profile.id, kind: "system", body: `opened ticket #${ticket.number} from a message here` });
+  await db
+    .from("messages")
+    .update({
+      meta: {
+        ...((msg.meta as Record<string, unknown> | null) ?? {}),
+        ticket: { id: ticket.id, number: ticket.number, requester_id: requesterId, by: profile.display_name },
+      },
+    })
+    .eq("id", msg.id);
+
+  refresh();
+  return { ok: true, number: ticket.number };
 }

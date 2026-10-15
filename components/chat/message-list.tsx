@@ -28,6 +28,8 @@ type Props = {
   onEdit: (id: string, body: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onRetry: (id: string) => void;
+  onCreateTicket?: (message: ChatMessage) => void;
+  canCreateTicket?: (message: ChatMessage) => boolean;
 };
 
 const BOTTOM_THRESHOLD = 80;

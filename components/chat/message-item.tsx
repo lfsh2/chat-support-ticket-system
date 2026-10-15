@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useCallback, useState } from "react";
-import { AlertCircle, MessageSquare } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, MessageSquare, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +40,24 @@ type Props = {
   onEdit: (id: string, body: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onRetry: (id: string) => void;
+  /** Team: turn a message into a ticket. Both must be stable (they're memo inputs). */
+  onCreateTicket?: (message: ChatMessage) => void;
+  canCreateTicket?: (message: ChatMessage) => boolean;
 };
+
+type TicketRef = { number: number; requester_id: string };
+
+/** "Ticket #1045" beside a message that was turned into a ticket. */
+function TicketChip({ number }: { number: number }) {
+  return (
+    <Link
+      href={`/dashboard/tickets/${number}`}
+      className="border-rule text-foreground/80 hover:text-foreground hover:border-foreground/30 inline-flex items-center gap-1 rounded-[4px] border px-1.5 text-[11px] leading-[18px] font-semibold"
+    >
+      <Ticket className="size-3" aria-hidden /> Ticket #{number}
+    </Link>
+  );
+}
 
 function EditBox({ initial, onSave, onCancel }: { initial: string; onSave: (body: string) => void; onCancel: () => void }) {
   const [value, setValue] = useState(initial);
@@ -88,6 +106,8 @@ export const MessageItem = memo(function MessageItem({
   onEdit,
   onDelete,
   onRetry,
+  onCreateTicket,
+  canCreateTicket,
 }: Props) {
   const isMobile = useIsMobile();
   const [editing, setEditing] = useState(false);
@@ -102,6 +122,10 @@ export const MessageItem = memo(function MessageItem({
   const sender = (message.meta as { sender?: string } | null)?.sender;
   const authorName = message.author?.display_name ?? sender ?? "Someone";
   const settled = !message.status;
+  const ticketRef = (message.meta as { ticket?: TicketRef } | null)?.ticket;
+  // The team and the client it belongs to see the link; other clients in a shared channel don't.
+  const showTicket = ticketRef && (iAmStaff || ticketRef.requester_id === myId);
+  const ticketable = Boolean(onCreateTicket && !ticketRef && canCreateTicket?.(message));
 
   const handlers: MessageActionHandlers = {
     canEdit: mine && settled && !deleted,
@@ -112,6 +136,7 @@ export const MessageItem = memo(function MessageItem({
     },
     onEdit: () => setEditing(true),
     onDelete: () => setConfirmDelete(true),
+    onCreateTicket: ticketable ? () => onCreateTicket?.(message) : undefined,
   };
 
   const openDrawer = useCallback(() => setDrawerOpen(true), []);
@@ -157,6 +182,22 @@ export const MessageItem = memo(function MessageItem({
               {formatTime(at, timeZone)}
             </time>
             {message.via === "email" && <span className="text-muted-foreground border-rule rounded-[4px] border px-1 text-[11px] leading-4">via email</span>}
+            {message.via === "chat" && (message.meta as { from_channel?: string } | null)?.from_channel && (
+              <span className="text-muted-foreground border-rule rounded-[4px] border px-1 text-[11px] leading-4">
+                from #{(message.meta as { from_channel: string }).from_channel}
+              </span>
+            )}
+            {showTicket && <TicketChip number={ticketRef.number} />}
+            {ticketable && !isMobile && settled && !deleted && (
+              <button
+                type="button"
+                onClick={() => onCreateTicket?.(message)}
+                className="text-muted-foreground hover:text-foreground hover:border-foreground/30 border-rule inline-flex cursor-pointer items-center gap-1 rounded-[4px] border px-1.5 text-[11px] leading-[18px] opacity-0 transition-opacity group-hover/message:opacity-100 focus-visible:opacity-100"
+                aria-label="Create a ticket from this message"
+              >
+                <Ticket className="size-3" aria-hidden /> Ticket
+              </button>
+            )}
             {note && <span className="text-warning text-xs font-semibold">Internal note · only the team sees this</span>}
           </div>
         )}
@@ -176,6 +217,11 @@ export const MessageItem = memo(function MessageItem({
           <>
             {message.body && <MessageBody body={message.body} />}
             {message.edited_at && <span className="text-muted-foreground text-xs"> (edited)</span>}
+            {!isGroupStart && showTicket && (
+              <span className="ml-1.5">
+                <TicketChip number={ticketRef.number} />
+              </span>
+            )}
             <AttachmentPreview attachments={message.attachments} />
           </>
         )}

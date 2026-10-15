@@ -18,6 +18,8 @@ export async function cleanupE2eData() {
     await admin.from("messages").delete().in("ticket_id", ids);
     await admin.from("tickets").delete().in("id", ids);
   }
+  // Chat messages posted by tests (and turned into tickets above).
+  await admin.from("messages").delete().not("channel_id", "is", null).like("body", `%${E2E_TAG}%`);
   // Email feed cards and the inbound log for test emails.
   await admin.from("messages").delete().eq("kind", "email").like("meta->>subject", `%${E2E_TAG}%`);
   await admin.from("inbound_emails").delete().like("subject", `%${E2E_TAG}%`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, MoreHorizontal, Pencil, SmilePlus, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, Pencil, SmilePlus, Ticket, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,6 +25,8 @@ export type MessageActionHandlers = {
   onCopy: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** Team only: turn this message into a ticket (absent when not allowed). */
+  onCreateTicket?: () => void;
 };
 
 function EmojiRow({ onReact, size = "md" }: { onReact: (emoji: string) => void; size?: "md" | "lg" }) {
@@ -50,7 +52,7 @@ function EmojiRow({ onReact, size = "md" }: { onReact: (emoji: string) => void; 
 }
 
 /** Desktop: floating toolbar shown on hover/focus. */
-export function MessageToolbar({ canEdit, canDelete, onReact, onCopy, onEdit, onDelete }: MessageActionHandlers) {
+export function MessageToolbar({ canEdit, canDelete, onReact, onCopy, onEdit, onDelete, onCreateTicket }: MessageActionHandlers) {
   return (
     <div className="bg-card border-rule absolute -top-4 right-4 z-10 hidden items-center rounded-md border p-0.5 opacity-0 md:right-6 transition-opacity group-focus-within/message:opacity-100 group-hover/message:opacity-100 md:flex has-data-popup-open:opacity-100 has-aria-expanded:opacity-100">
       {QUICK_REACTIONS.slice(0, 3).map((emoji) => (
@@ -71,6 +73,11 @@ export function MessageToolbar({ canEdit, canDelete, onReact, onCopy, onEdit, on
           <MoreHorizontal />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-40">
+          {onCreateTicket && (
+            <DropdownMenuItem onClick={onCreateTicket}>
+              <Ticket /> Create ticket
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={onCopy}>
             <Copy /> Copy text
           </DropdownMenuItem>
@@ -94,13 +101,18 @@ export function MessageToolbar({ canEdit, canDelete, onReact, onCopy, onEdit, on
 }
 
 /** Desktop: right-click menu (rendered inside a <ContextMenu>). */
-export function MessageContextMenu({ canEdit, canDelete, onReact, onCopy, onEdit, onDelete }: MessageActionHandlers) {
+export function MessageContextMenu({ canEdit, canDelete, onReact, onCopy, onEdit, onDelete, onCreateTicket }: MessageActionHandlers) {
   return (
     <ContextMenuContent className="min-w-44">
       <div className="p-1">
         <EmojiRow onReact={onReact} />
       </div>
       <ContextMenuSeparator />
+      {onCreateTicket && (
+        <ContextMenuItem onClick={onCreateTicket}>
+          <Ticket /> Create ticket
+        </ContextMenuItem>
+      )}
       <ContextMenuItem onClick={onCopy}>
         <Copy /> Copy text
       </ContextMenuItem>
@@ -140,6 +152,11 @@ export function MessageActionDrawer({
           <EmojiRow size="lg" onReact={(e) => run(() => h.onReact(e))()} />
         </div>
         <div className="flex flex-col px-2">
+          {h.onCreateTicket && (
+            <Button variant="ghost" className="h-12 justify-start gap-3 px-4 text-base" onClick={run(h.onCreateTicket)}>
+              <Ticket className="size-5" /> Create ticket
+            </Button>
+          )}
           <Button variant="ghost" className="h-12 justify-start gap-3 px-4 text-base" onClick={run(h.onCopy)}>
             <Copy className="size-5" /> Copy text
           </Button>
