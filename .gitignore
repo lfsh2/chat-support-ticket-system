@@ -42,3 +42,6 @@ next-env.d.ts
 !.env.example
 /test-results/
 /playwright-report/
+
+# Google OAuth client secrets: keep them out of the repo
+client_secret_*.json
