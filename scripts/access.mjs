@@ -5,6 +5,7 @@
 //   pnpm hub revoke client@email.com coachos
 //   pnpm hub staff  sammi@aliveandfreeconsulting.com owner ["Sammi"]   # agent | admin | owner
 //   pnpm hub name   client@email.com "New Name"
+//   pnpm hub email  old@email.com new@email.com     # change someone's sign-in email, keeping their account
 //   pnpm hub link   client@email.com     # one-time sign-in link, no email needed (expires in 1 hour)
 //
 // Reads NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and NEXT_PUBLIC_APP_URL from
@@ -109,6 +110,25 @@ switch (command) {
     console.log(`✓ ${email} now shows as "${displayName}".`);
     break;
   }
+  case "email": {
+    needEmail();
+    const next = arg?.trim().toLowerCase();
+    if (!next || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(next)) fail("Give the new email, e.g. pnpm hub email old@email.com new@email.com");
+    if (next === email) fail("That's the same email.");
+    const { data: profile } = await db.from("profiles").select("id").eq("email", email).maybeSingle();
+    if (!profile) fail(`No account for ${email}.`);
+    const { data: taken } = await db.from("profiles").select("id").eq("email", next).maybeSingle();
+    if (taken) fail(`${next} already belongs to another account.`);
+    // Sign-in address first (confirmed, so no verification email), then the hub's own copies.
+    const { error: authError } = await db.auth.admin.updateUserById(profile.id, { email: next, email_confirm: true });
+    if (authError) fail(`Couldn't change the sign-in email: ${authError.message}`);
+    const { error: profileError } = await db.from("profiles").update({ email: next }).eq("id", profile.id);
+    if (profileError) fail(profileError.message);
+    const { error: membershipError } = await db.from("memberships").update({ email: next }).eq("email", email);
+    if (membershipError) fail(membershipError.message);
+    console.log(`✓ ${email} now signs in as ${next}. Their messages, tickets and tasks stay with them.`);
+    break;
+  }
   case "link": {
     needEmail();
     const app = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
@@ -128,5 +148,6 @@ switch (command) {
   pnpm hub revoke <email> <coachos|alive_free>
   pnpm hub staff  <email> <agent|admin|owner|member> ["Display Name"]
   pnpm hub name   <email> "Display Name"
+  pnpm hub email  <old email> <new email>
   pnpm hub link   <email>`);
 }
