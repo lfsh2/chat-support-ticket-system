@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils";
 /**
  * Alive + Free mark: the line-art heart plus the lowercase, letter-spaced
  * "alive + free" from the brand logo, with the product name set small beneath.
- * `tone="light"` inverts the black line art for dark (navy) backgrounds.
+ * `tone="light"` inverts the black line art for dark backgrounds; `tone="dark"` keeps it black
+ * (and inverts only in dark mode), for the sage sidebar.
  */
 export function Wordmark({
   className,

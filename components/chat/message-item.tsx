@@ -47,6 +47,20 @@ type Props = {
 
 type TicketRef = { number: number; requester_id: string };
 
+/** The team's "turn this into a ticket" button: quiet until the message is hovered or focused. */
+function CreateTicketButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-muted-foreground hover:text-foreground hover:border-foreground/30 border-rule inline-flex cursor-pointer items-center gap-1 rounded-[4px] border px-1.5 align-middle text-[11px] leading-[18px] opacity-0 transition-opacity group-hover/message:opacity-100 focus-visible:opacity-100"
+      aria-label="Create a ticket from this message"
+    >
+      <Ticket className="size-3" aria-hidden /> Ticket
+    </button>
+  );
+}
+
 /** "Ticket #1045" beside a message that was turned into a ticket. */
 function TicketChip({ number }: { number: number }) {
   return (
@@ -188,16 +202,7 @@ export const MessageItem = memo(function MessageItem({
               </span>
             )}
             {showTicket && <TicketChip number={ticketRef.number} />}
-            {ticketable && !isMobile && settled && !deleted && (
-              <button
-                type="button"
-                onClick={() => onCreateTicket?.(message)}
-                className="text-muted-foreground hover:text-foreground hover:border-foreground/30 border-rule inline-flex cursor-pointer items-center gap-1 rounded-[4px] border px-1.5 text-[11px] leading-[18px] opacity-0 transition-opacity group-hover/message:opacity-100 focus-visible:opacity-100"
-                aria-label="Create a ticket from this message"
-              >
-                <Ticket className="size-3" aria-hidden /> Ticket
-              </button>
-            )}
+            {ticketable && !isMobile && settled && !deleted && <CreateTicketButton onClick={() => onCreateTicket?.(message)} />}
             {note && <span className="text-warning text-xs font-semibold">Internal note · only the team sees this</span>}
           </div>
         )}
@@ -220,6 +225,12 @@ export const MessageItem = memo(function MessageItem({
             {!isGroupStart && showTicket && (
               <span className="ml-1.5">
                 <TicketChip number={ticketRef.number} />
+              </span>
+            )}
+            {/* Follow-up messages have no header, so their button sits at the end of the line. */}
+            {!isGroupStart && ticketable && !isMobile && settled && (
+              <span className="ml-1.5">
+                <CreateTicketButton onClick={() => onCreateTicket?.(message)} />
               </span>
             )}
             <AttachmentPreview attachments={message.attachments} />

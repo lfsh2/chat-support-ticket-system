@@ -87,15 +87,15 @@
   --radius: 0.625rem;
   --rule: #E4E0D5;
   --ink: #131C33;
-  /* Sidebar stays dark in both modes, like Slack */
-  --sidebar: #131C33;
-  --sidebar-foreground: #C9D1E3;
-  --sidebar-primary: #5B82FF;
+  /* Sidebar in the Alive + Free signature sage, with deep ink text */
+  --sidebar: #C3CDBC;
+  --sidebar-foreground: #1F2A1C;
+  --sidebar-primary: #131C33;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1F2A47;
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #131C33;
-  --sidebar-ring: #5B82FF;
+  --sidebar-accent: #B1BDA8;
+  --sidebar-accent-foreground: #131C33;
+  --sidebar-border: #C3CDBC;
+  --sidebar-ring: #131C33;
 }
 
 .dark {
@@ -128,14 +128,15 @@
   --chart-3: #3FB988;
   --chart-4: #E0A23B;
   --chart-5: #98A2B8;
-  --sidebar: #0A1020;
-  --sidebar-foreground: #C9D1E3;
-  --sidebar-primary: #5B82FF;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #18213A;
+  /* Dark mode: the same sage, deepened to forest */
+  --sidebar: #1F271F;
+  --sidebar-foreground: #C9D4C1;
+  --sidebar-primary: #E8ECF4;
+  --sidebar-primary-foreground: #0E1526;
+  --sidebar-accent: #2D382C;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #0A1020;
-  --sidebar-ring: #5B82FF;
+  --sidebar-border: #1F271F;
+  --sidebar-ring: #C3CDBC;
 }
 
 @layer base {
@@ -182,6 +183,12 @@
   font-style: italic;
   font-optical-sizing: auto;
   letter-spacing: -0.005em;
+}
+
+/* On the light sage sidebar, the Alive & Free brown needs a deeper shade to stay visible
+   (3.3:1). Desktop sidebar and the mobile channel sheet only; not the paper Chat tab. */
+:root:not(.dark) [data-sidebar="sidebar"][data-slot] {
+  --accent-af: #8F5E38;
 }
 
 /* Recolours sidebar tokens to paper, so ChannelNav can sit on a light page (mobile Chat tab). */

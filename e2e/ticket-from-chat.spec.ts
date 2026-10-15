@@ -75,3 +75,19 @@ test("in a shared channel, other clients don't see the ticket link", async ({ br
   await expect(row(bailey, text).first()).toBeVisible();
   await expect(row(bailey, text).first().getByRole("link", { name: /Ticket #/ })).toHaveCount(0);
 });
+
+test("follow-up messages (no header) can be turned into a ticket too", async ({ browser }) => {
+  test.setTimeout(90_000);
+  const first = `${E2E_TAG} Quick one about my calendar ${Date.now().toString(36)}`;
+  const second = `${E2E_TAG} and the booking page shows the wrong times ${Date.now().toString(36)}`;
+  const casey = await signedIn(browser, "coachos", CASEY_CHANNEL, 390);
+  await post(casey, first);
+  await post(casey, second); // same author within 5 minutes → grouped, no header
+
+  const staff = await signedIn(browser, "agent", CASEY_CHANNEL);
+  const msg = row(staff, second).first();
+  await expect(msg).toBeVisible({ timeout: 10_000 });
+  await msg.hover();
+  await msg.getByRole("button", { name: "Create a ticket from this message" }).click();
+  await expect(staff.getByRole("dialog", { name: "Create a ticket" }).getByLabel("Subject")).toHaveValue(second);
+});

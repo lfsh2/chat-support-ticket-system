@@ -15,6 +15,8 @@ for (const width of [390, 1280]) {
     test(`screens @${width} ${scheme}`, async ({ page }) => {
       await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
       await page.emulateMedia({ colorScheme: scheme });
+      // Light is the default; dark is a choice under Me (stored by next-themes).
+      await page.addInitScript((t) => localStorage.setItem("theme", t), scheme);
       await page.goto("/login");
       await page.screenshot({ path: `test-results/screens/login-${width}-${scheme}.png` });
       await signInAs(page, EMAILS[`${width}-${scheme}`]);

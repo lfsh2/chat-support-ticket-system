@@ -17,9 +17,9 @@ export function AuthCard({
   return (
     <main className="grid min-h-dvh grid-rows-[auto_1fr] md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:grid-rows-none">
       <section className="bg-sidebar text-sidebar-foreground relative flex flex-col gap-8 overflow-hidden px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-7 md:justify-between md:gap-10 md:px-12 md:py-12">
-        <Wordmark className="text-white" />
+        <Wordmark tone="dark" className="text-sidebar-accent-foreground" />
         <div className="max-w-md">
-          <p className="font-display text-[30px] leading-[1.1] tracking-tight text-white md:text-[44px]">
+          <p className="font-display text-[30px] leading-[1.1] tracking-tight text-sidebar-accent-foreground md:text-[44px]">
             Ask the team.
             <br />
             Share a win.
@@ -35,8 +35,8 @@ export function AuthCard({
             ))}
           </ul>
         </div>
-        <p className="text-sidebar-foreground/60 hidden text-xs md:block">
-          {ORG_NAME} · Questions about access? <a className="underline underline-offset-2 hover:text-white" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+        <p className="text-sidebar-foreground/80 hidden text-xs md:block">
+          {ORG_NAME} · Questions about access? <a className="underline underline-offset-2 hover:text-sidebar-accent-foreground" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
         </p>
       </section>
 

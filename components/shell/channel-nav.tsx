@@ -187,7 +187,7 @@ function ClientChannels({
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="text-sidebar-foreground/60 hover:text-sidebar-foreground flex h-11 w-full cursor-pointer items-center px-2 text-left text-[13px] md:h-7 md:text-xs"
+            className="text-sidebar-foreground/80 hover:text-sidebar-foreground flex h-11 w-full cursor-pointer items-center px-2 text-left text-[13px] md:h-7 md:text-xs"
           >
             {expanded ? "Show fewer" : `Show ${hidden} more`}
           </button>

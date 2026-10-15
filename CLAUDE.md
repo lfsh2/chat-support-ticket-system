@@ -61,7 +61,7 @@ program gets its own accent so members always know "which world" a channel belon
 | Token | Light | Dark | Use |
 |---|---|---|---|
 | `--background` | `#FBFAF7` (warm paper) | `#0E1526` (midnight) | App background |
-| `--sidebar` | `#131C33` (midnight navy) | `#0A1020` | Channel sidebar (dark in both modes, like Slack) |
+| `--sidebar` | `#C3CDBC` (Alive + Free signature sage) | `#1F271F` (deep forest) | Channel sidebar and the sign-in panel; ink text `#1F2A1C` on sage (secondary text ≥ 80% opacity for AA). Inside the light sidebar the Alive & Free marker uses a deeper brown `#8F5E38` |
 | `--foreground` | `#1B2233` | `#E8ECF4` | Body text |
 | `--primary` | `#2F5BEA` (CoachOS blue) | `#5B82FF` | Primary buttons, links, focus rings |
 | `--accent-af` | `#C59267` (Alive & Free brown) | `#D9A87E` | Alive & Free channels, badges |
@@ -70,13 +70,13 @@ program gets its own accent so members always know "which world" a channel belon
 | `--warning` | `#B7791F` | `#E0A23B` | Waiting on client |
 | `--destructive` | shadcn default | shadcn default | Errors, delete |
 
-- **Direction — "studio notebook":** warm paper surface (faint grain), ink-navy sidebar, ruled hairlines instead of cards and pills. Signature details: the active channel is a paper tab that joins the page (desktop); day dividers are italic serif margin notes; each page header carries a 3px rule in its program colour (ink for shared). Brown and blue mean *programs only* — don't reuse them for other UI. Primary actions are solid ink, not blue.
+- **Direction — "studio notebook":** warm paper surface (faint grain), sage sidebar in the Alive + Free signature green, ruled hairlines instead of cards and pills. Signature details: the active channel is a paper tab that joins the page (desktop); day dividers are italic serif margin notes; each page header carries a 3px rule in its program colour (ink for shared). Brown and blue mean *programs only* — don't reuse them for other UI. Primary actions are solid ink, not blue.
 - **Type:** `Newsreader` (display serif, via `next/font`) for page/channel titles, empty-state headlines and italic "notes" (group labels, day dividers, eyebrows). `Figtree` for all body and UI text. Scale: 12 / 14 / 15 (message body) / 17 / 20 / 24. Message body is 15px on mobile, line-height 1.5. Inputs are **16px minimum** on mobile (prevents iOS zoom).
 - **Radius:** messages and inputs `0.75rem`; avatars fully round; sheets/drawers `1rem` top corners. Don't use one radius for everything.
 - **Shadows:** almost none. Separate areas with background tone, not drop shadows.
 - **Program marker:** each channel in the sidebar gets a small colored dot or program icon (brown for Alive & Free, blue for CoachOS, none for shared).
 - **Motion:** only in response to user actions — message send (slide in from composer), reaction pop, sheet/drawer open, unread divider fade. Respect `prefers-reduced-motion`.
-- **Dark mode:** supported via `next-themes`, default = system.
+- **Dark mode:** supported via `next-themes`; default = **light** (people can pick Dark or System under Me).
 - **Copy voice:** plain, warm, sentence case. "Get help" not "Submit ticket request." "We usually reply within one business day." Errors say what happened and what to do.
 
 ---
