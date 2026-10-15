@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signInAs } from "./helpers";
+import { requestMagicLink, signInAs } from "./helpers";
 
 test("unknown emails are turned away with a helpful message", async ({ page }) => {
   await page.goto("/login");
@@ -76,4 +76,24 @@ test("a sign-in code on any page is finished at /auth/callback, not dropped", as
   await page.goto("/?code=not-a-real-code");
   await expect(page).toHaveURL(/\/login\?error=link$/);
   await expect(page.getByText("That sign-in link has expired or was already used.")).toBeVisible();
+});
+
+test("link previews and email scanners can't use up a sign-in link", async ({ page, browser }) => {
+  const link = await requestMagicLink(page, "coachos@example.com");
+  // A chat app or mail scanner fetching the link (twice, even) must not sign anyone in.
+  for (let i = 0; i < 2; i++) {
+    const preview = await page.request.get(link);
+    expect(preview.status()).toBe(200);
+    expect(await preview.text()).toContain("Continue to Client Hub");
+  }
+  // The person opens it later, on another device, and taps Continue.
+  const other = await (await browser.newContext()).newPage();
+  await other.goto(link);
+  await other.getByRole("button", { name: "Continue to Client Hub" }).click();
+  await expect(other).toHaveURL(/\/c\/general$/);
+  // A second tap on the same link is refused: it works once.
+  const again = await (await browser.newContext()).newPage();
+  await again.goto(link);
+  await again.getByRole("button", { name: "Continue to Client Hub" }).click();
+  await expect(again).toHaveURL(/\/login\?error=link$/);
 });

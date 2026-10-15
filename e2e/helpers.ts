@@ -12,6 +12,15 @@ async function inboxIds(email: string): Promise<Set<string>> {
 
 /** Requests a magic link through the UI, then follows it from the local Mailpit inbox. */
 export async function signInAs(page: Page, email: string) {
+  const link = await requestMagicLink(page, email);
+  await page.goto(link);
+  // The link opens a "Continue" page; signing in waits for the tap (link previews can't use it up).
+  await page.getByRole("button", { name: "Continue to Client Hub" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/auth/"));
+}
+
+/** Asks for a sign-in link on /login and returns the link from the email that arrives. */
+export async function requestMagicLink(page: Page, email: string): Promise<string> {
   const before = await inboxIds(email);
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
@@ -32,5 +41,5 @@ export async function signInAs(page: Page, email: string) {
     }, { timeout: 15_000 })
     .toBeTruthy();
 
-  await page.goto(link!);
+  return link!;
 }
