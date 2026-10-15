@@ -11,7 +11,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <AuthCard
       title="Sign in"
-      subtitle="We'll email you a link. No password to remember."
+      subtitle="Use your email and password, or get a sign-in link by email."
     >
       {error === "dev" && (
         <p className="border-warning text-foreground mb-6 border-l-2 py-1 pl-3 text-sm" role="alert">

@@ -23,6 +23,7 @@ export async function signInAs(page: Page, email: string) {
 export async function requestMagicLink(page: Page, email: string): Promise<string> {
   const before = await inboxIds(email);
   await page.goto("/login");
+  await page.getByRole("button", { name: /Email me a sign-in link instead/ }).click();
   await page.getByLabel("Email").fill(email);
   // Supabase allows one link per address per second; tests sign the same people in back to back.
   await expect(async () => {
@@ -42,4 +43,15 @@ export async function requestMagicLink(page: Page, email: string): Promise<strin
     .toBeTruthy();
 
   return link!;
+}
+
+/** Sets a user's password directly (local Supabase only; playwright.config refuses anything else). */
+export async function setPassword(email: string, password: string) {
+  const { createClient } = await import("@supabase/supabase-js");
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false },
+  });
+  const { data } = await admin.from("profiles").select("id").eq("email", email).single();
+  const { error } = await admin.auth.admin.updateUserById(data!.id, { password });
+  if (error) throw error;
 }

@@ -6,11 +6,13 @@
 //   pnpm hub staff  sammi@aliveandfreeconsulting.com owner ["Sammi"]   # agent | admin | owner
 //   pnpm hub name   client@email.com "New Name"
 //   pnpm hub email  old@email.com new@email.com     # change someone's sign-in email, keeping their account
+//   pnpm hub password client@email.com [password]   # set a password (made up for you if left out)
 //   pnpm hub link   client@email.com     # one-time sign-in link, no email needed (expires in 1 hour)
 //
 // Reads NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and NEXT_PUBLIC_APP_URL from
 // .env.production.local (or the environment). Always prints which project it's about to change.
 
+import { randomInt } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 const PROGRAMS = ["coachos", "alive_free"];
@@ -129,6 +131,20 @@ switch (command) {
     console.log(`✓ ${email} now signs in as ${next}. Their messages, tickets and tasks stay with them.`);
     break;
   }
+  case "password": {
+    needEmail();
+    // Readable but strong: 12 characters from an alphabet without look-alikes (no 0/o, 1/l/i).
+    const ABC = "abcdefghjkmnpqrstuvwxyz23456789";
+    const made = Array.from({ length: 3 }, () => Array.from({ length: 4 }, () => ABC[randomInt(ABC.length)]).join("")).join("-");
+    const password = arg ?? made;
+    if (password.length < 8) fail("Use at least 8 characters.");
+    const { data: profile } = await db.from("profiles").select("id").eq("email", email).maybeSingle();
+    if (!profile) fail(`No account for ${email}. Create it first with grant or staff.`);
+    const { error } = await db.auth.admin.updateUserById(profile.id, { password });
+    if (error) fail(`Couldn't set the password: ${error.message}`);
+    console.log(`✓ ${email} can sign in with password: ${password}`);
+    break;
+  }
   case "link": {
     needEmail();
     const app = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
@@ -149,5 +165,6 @@ switch (command) {
   pnpm hub staff  <email> <agent|admin|owner|member> ["Display Name"]
   pnpm hub name   <email> "Display Name"
   pnpm hub email  <old email> <new email>
+  pnpm hub password <email> [password]
   pnpm hub link   <email>`);
 }

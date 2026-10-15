@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { requestMagicLink, signInAs } from "./helpers";
+import { requestMagicLink, setPassword, signInAs } from "./helpers";
 
 test("unknown emails are turned away with a helpful message", async ({ page }) => {
   await page.goto("/login");
+  await page.getByRole("button", { name: /Email me a sign-in link instead/ }).click();
   await page.getByLabel("Email").fill("stranger@example.com");
   await page.getByRole("button", { name: "Email me a sign-in link" }).click();
   await expect(page.getByText("We couldn't find an active membership for this email.")).toBeVisible();
@@ -35,6 +36,7 @@ test("Alive & Free member does not see CoachOS channels", async ({ page }) => {
 
 test("lapsed members are turned away at the door", async ({ page }) => {
   await page.goto("/login");
+  await page.getByRole("button", { name: /Email me a sign-in link instead/ }).click();
   await page.getByLabel("Email").fill("lapsed@example.com");
   await page.getByRole("button", { name: "Email me a sign-in link" }).click();
   await expect(page.getByText("We couldn't find an active membership for this email.")).toBeVisible();
@@ -96,4 +98,27 @@ test("link previews and email scanners can't use up a sign-in link", async ({ pa
   await again.goto(link);
   await again.getByRole("button", { name: "Continue to Client Hub" }).click();
   await expect(again).toHaveURL(/\/login\?error=link$/);
+});
+
+test("email + password sign-in", async ({ page }) => {
+  await setPassword("coachos@example.com", "demo-pass-2468");
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("coachos@example.com");
+  await page.getByLabel("Password").fill("wrong-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByText("That email and password don't match.")).toBeVisible();
+  await expect(page.getByLabel("Email")).toHaveValue("coachos@example.com");
+
+  await page.getByLabel("Password").fill("demo-pass-2468");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/c\/general$/);
+});
+
+test("a lapsed member with a password still can't get in", async ({ page }) => {
+  await setPassword("lapsed@example.com", "demo-pass-2468");
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("lapsed@example.com");
+  await page.getByLabel("Password").fill("demo-pass-2468");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/access-ended$/);
 });

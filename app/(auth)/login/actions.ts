@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { canSignIn, normalizeEmail } from "@/lib/access";
@@ -77,4 +78,35 @@ export async function requestMagicLink(_prev: LoginState, formData: FormData): P
   }
 
   return { status: "sent", email };
+}
+
+const passwordSchema = z.object({
+  email: z.email("That doesn't look like an email address. Check for typos and try again."),
+  password: z.string().min(1, "Enter your password."),
+  next: z.string().optional(),
+});
+
+/** Email + password sign-in. Access (membership or team role) is checked on every page after this. */
+export async function signInWithPassword(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  const email = String(formData.get("email") ?? "").trim();
+  const parsed = passwordSchema.safeParse({
+    email,
+    password: String(formData.get("password") ?? ""),
+    next: formData.get("next") ?? undefined,
+  });
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0].message, email };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email: normalizeEmail(parsed.data.email),
+    password: parsed.data.password,
+  });
+  if (error) {
+    const message =
+      error.status === 429
+        ? "Too many tries. Wait a minute, then try again."
+        : "That email and password don't match. Try again, or email yourself a sign-in link instead.";
+    return { status: "error", message, email };
+  }
+  redirect(safeNext(parsed.data.next));
 }
