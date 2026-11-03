@@ -17,8 +17,10 @@ export async function generateMetadata({ params }: PageProps<"/dashboard/tickets
 const TICKET_DETAIL_SELECT =
   "*, requester:profiles!tickets_requester_id_fkey(id, display_name, avatar_url, email), assignee:profiles!tickets_assignee_id_fkey(id, display_name, avatar_url)" as const;
 
-export default async function TicketPage({ params }: PageProps<"/dashboard/tickets/[number]">) {
-  const { number } = await params;
+export default async function TicketPage({ params, searchParams }: PageProps<"/dashboard/tickets/[number]">) {
+  const [{ number }, sp] = await Promise.all([params, searchParams]);
+  // ?m=<id>: scroll to and flash that message (links from the Inbox).
+  const highlightId = typeof sp.m === "string" && /^[0-9a-f-]{36}$/.test(sp.m) ? sp.m : null;
   if (!/^\d{1,9}$/.test(number)) notFound();
   const { supabase, profile } = await requireHubAccess();
 
@@ -37,7 +39,15 @@ export default async function TicketPage({ params }: PageProps<"/dashboard/ticke
 
   if (!isStaffRole(profile.role)) {
     const { data: messages } = await messagesQuery;
-    return <TicketView key={ticket.id} ticket={ticket} initialMessages={(messages ?? []) as unknown as ChatMessage[]} panel={null} />;
+    return (
+      <TicketView
+        key={ticket.id}
+        ticket={ticket}
+        initialMessages={(messages ?? []) as unknown as ChatMessage[]}
+        panel={null}
+        highlightId={highlightId}
+      />
+    );
   }
 
   const [{ data: messages }, { data: staff }, { data: memberships }, { data: past }, { data: tasks }, { data: mailbox }] = await Promise.all([
@@ -75,6 +85,7 @@ export default async function TicketPage({ params }: PageProps<"/dashboard/ticke
       initialMessages={(messages ?? []) as unknown as ChatMessage[]}
       panel={panel}
       emailTo={emailTo}
+      highlightId={highlightId}
     />
   );
 }

@@ -37,7 +37,7 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function UnreadBadge({ count }: { count: number }) {
+export function UnreadBadge({ count }: { count: number }) {
   return (
     <span className="bg-sidebar-accent-foreground text-[var(--badge-ink,var(--sidebar))] ml-auto shrink-0 rounded-[4px] px-1.5 text-[11px] leading-[18px] font-bold tabular-nums">
       {formatCount(count)}

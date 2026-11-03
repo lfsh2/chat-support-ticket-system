@@ -211,3 +211,27 @@
     background: color-mix(in oklab, var(--primary) 22%, transparent);
   }
 }
+
+/* A message opened from the Inbox: a soft primary wash with a margin rule that fades out.
+   With reduced motion it's a static highlight, removed after a few seconds. */
+@keyframes message-highlight {
+  0%,
+  60% {
+    background-color: color-mix(in oklab, var(--primary) 11%, transparent);
+    box-shadow: inset 3px 0 0 var(--primary);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: inset 3px 0 0 transparent;
+  }
+}
+.message-highlight {
+  animation: message-highlight 3.2s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .message-highlight {
+    animation: none;
+    background-color: color-mix(in oklab, var(--primary) 11%, transparent);
+    box-shadow: inset 3px 0 0 var(--primary);
+  }
+}

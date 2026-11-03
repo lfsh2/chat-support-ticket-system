@@ -2,26 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, LifeBuoy, ListChecks, Ticket } from "lucide-react";
+import { Bell, House, LifeBuoy, ListChecks, Ticket } from "lucide-react";
 import { SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { UnreadBadge } from "./channel-nav";
 import { useHub } from "./hub-context";
 
-/** Dashboard / Tickets / Tasks at the top of the sidebar. Tasks are team-only. */
+/** Dashboard / Tickets / Tasks / Inbox at the top of the sidebar. Tasks are team-only. */
 export function WorkspaceNav({ onNavigate, tabbed = false }: { onNavigate?: () => void; tabbed?: boolean }) {
-  const { isStaff } = useHub();
+  const { isStaff, inboxUnread } = useHub();
   const pathname = usePathname();
   const items = [
     { href: "/dashboard", label: "Dashboard", icon: House, exact: true },
     { href: "/dashboard/tickets", label: isStaff ? "Tickets" : "My tickets", icon: isStaff ? Ticket : LifeBuoy },
     ...(isStaff ? [{ href: "/dashboard/tasks", label: "Tasks", icon: ListChecks }] : []),
+    { href: "/inbox", label: "Inbox", icon: Bell, badge: inboxUnread },
   ];
 
   return (
     <SidebarGroup className="py-1">
       <SidebarGroupContent>
         <SidebarMenu className="gap-px">
-          {items.map(({ href, label, icon: Icon, exact }) => {
+          {items.map(({ href, label, icon: Icon, exact, badge }) => {
             const active = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <SidebarMenuItem key={href}>
@@ -36,6 +38,12 @@ export function WorkspaceNav({ onNavigate, tabbed = false }: { onNavigate?: () =
                 >
                   <Icon className="opacity-70" aria-hidden />
                   <span className="min-w-0 flex-1 truncate">{label}</span>
+                  {badge ? (
+                    <>
+                      <UnreadBadge count={badge} />
+                      <span className="sr-only"> unread</span>
+                    </>
+                  ) : null}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             );

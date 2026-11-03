@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ListItem } from "@/lib/chat/group";
 import type { ChatMessage } from "@/lib/chat/types";
+import { cn } from "@/lib/utils";
 import { SystemEvent } from "@/components/tickets/system-event";
 import { EmailCard } from "./email-card";
 import { MessageItem } from "./message-item";
@@ -30,6 +31,11 @@ type Props = {
   onRetry: (id: string) => void;
   onCreateTicket?: (message: ChatMessage) => void;
   canCreateTicket?: (message: ChatMessage) => boolean;
+  onOpenThread?: (message: ChatMessage) => void;
+  /** Scroll to this message and flash it once it's loaded (deep links from the Inbox). */
+  highlightId?: string | null;
+  /** Inside a thread panel: smaller side padding. */
+  className?: string;
 };
 
 const BOTTOM_THRESHOLD = 80;
@@ -39,12 +45,26 @@ const BOTTOM_THRESHOLD = 80;
  * messages arrive, and keeps your place when older history is prepended above.
  */
 export const MessageList = forwardRef<MessageListHandle, Props>(function MessageList(
-  { items, hasOlder, loadingOlder, loadOlder, onAtBottomChange, newWhileAway, intro, ...itemProps },
+  { items, hasOlder, loadingOlder, loadOlder, onAtBottomChange, newWhileAway, intro, highlightId, className, ...itemProps },
   ref,
 ) {
   const scroller = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
+
+  // Deep link: once the message is on screen, bring it into view and flash it (once per id).
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const flashed = useRef<string | null>(null);
+  const hasTarget = Boolean(highlightId && items.some((i) => i.type === "message" && i.message.id === highlightId));
+  useEffect(() => {
+    if (!highlightId || !hasTarget || flashed.current === highlightId) return;
+    flashed.current = highlightId;
+    const el = scroller.current?.querySelector<HTMLElement>(`[id="message-${highlightId}"]`);
+    el?.scrollIntoView({ block: "center" });
+    setFlashId(highlightId);
+    const t = setTimeout(() => setFlashId(null), 4000);
+    return () => clearTimeout(t);
+  }, [highlightId, hasTarget]);
 
   useImperativeHandle(ref, () => ({
     scrollToBottom: (smooth = true) => scroller.current?.scrollTo({ top: 0, behavior: smooth ? "smooth" : "auto" }),
@@ -80,7 +100,7 @@ export const MessageList = forwardRef<MessageListHandle, Props>(function Message
       <div
         ref={scroller}
         onScroll={onScroll}
-        className="flex h-full flex-col-reverse overflow-x-hidden overflow-y-auto overscroll-contain"
+        className={cn("flex h-full flex-col-reverse overflow-x-hidden overflow-y-auto overscroll-contain", className)}
         tabIndex={-1}
       >
         <div className="flex flex-col pb-3">
@@ -111,7 +131,13 @@ export const MessageList = forwardRef<MessageListHandle, Props>(function Message
               if (item.message.kind === "email")
                 return <EmailCard key={item.key} message={item.message} timeZone={itemProps.timeZone} />;
               return (
-                <MessageItem key={item.key} message={item.message} isGroupStart={item.isGroupStart} {...itemProps} />
+                <MessageItem
+                  key={item.key}
+                  message={item.message}
+                  isGroupStart={item.isGroupStart}
+                  highlighted={flashId === item.message.id}
+                  {...itemProps}
+                />
               );
             })}
           </div>

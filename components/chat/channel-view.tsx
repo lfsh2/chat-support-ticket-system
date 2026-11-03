@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Hash, Inbox, Lock, Megaphone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TopBar } from "@/components/shell/top-bar";
 import { useHub, type HubChannel } from "@/components/shell/hub-context";
 import { useChannelMessages } from "@/hooks/use-channel-messages";
+import { useTyping } from "@/hooks/use-typing";
 import { buildListItems } from "@/lib/chat/group";
 import { LAST_CHANNEL_COOKIE } from "@/lib/chat/last-channel";
 import { toPlainText } from "@/lib/markdown";
@@ -17,6 +19,10 @@ import { ClientChannelMenu } from "./client-channel-menu";
 import { MailboxStatus } from "./mailbox-status";
 import { TicketFromMessageDialog } from "@/components/tickets/ticket-from-message-dialog";
 import { MessageList, type MessageListHandle } from "./message-list";
+import { ThreadPanel } from "./thread-panel";
+import { TypingIndicator } from "./typing-indicator";
+
+const THREAD_PATH = /^\/c\/[^/]+\/t\/([0-9a-f-]{36})\/?$/;
 
 type Channel = Pick<HubChannel, "id" | "slug" | "name" | "description" | "program" | "type" | "parent_id" | "client_id" | "staff_only">;
 
@@ -24,12 +30,15 @@ export function ChannelView({
   channel,
   initialMessages,
   lastReadAt,
+  highlightId = null,
 }: {
   channel: Channel;
   initialMessages: ChatMessage[];
   lastReadAt: string | null;
+  /** A message to scroll to and flash: in the channel, or (with a thread open) a reply in it. */
+  highlightId?: string | null;
 }) {
-  const { profile, isStaff, setChannelRead } = useHub();
+  const { profile, isStaff, setChannelRead, inboxUnread, refreshInbox } = useHub();
   const timeZone = safeTimeZone(profile.timezone);
   const supabase = useMemo(() => createClient(), []);
   const me = useMemo(
@@ -46,6 +55,28 @@ export function ChannelView({
     [chat.messages, unreadAfter, profile.id, timeZone],
   );
 
+  // --- threads ----------------------------------------------------------------
+  // The open thread lives in the URL (/c/<slug>/t/<id>), so it can be shared and survives
+  // reloads. Opening and closing use history.pushState: instant, and Back closes it.
+  const pathname = usePathname();
+  const threadId = THREAD_PATH.exec(pathname)?.[1] ?? null;
+  const openThread = useCallback(
+    (m: ChatMessage) => window.history.pushState(null, "", `/c/${channel.slug}/t/${m.id}`),
+    [channel.slug],
+  );
+  const closeThread = useCallback(() => window.history.pushState(null, "", `/c/${channel.slug}`), [channel.slug]);
+  const threadParent = useMemo(
+    () => (threadId ? (chat.messages.find((m) => m.id === threadId) ?? null) : null),
+    [threadId, chat.messages],
+  );
+  // From the Inbox: a reply highlights inside the thread; the channel brings its parent into view.
+  const [initialThread] = useState(threadId);
+  const channelHighlight = initialThread ?? highlightId;
+  const threadHighlight = initialThread && threadId === initialThread ? highlightId : null;
+
+  const typingMe = useMemo(() => ({ id: profile.id, name: profile.display_name }), [profile.id, profile.display_name]);
+  const typing = useTyping(`channel:${channel.id}`, typingMe);
+
   // Remember this channel for "/".
   useEffect(() => {
     document.cookie = `${LAST_CHANNEL_COOKIE}=${channel.slug}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
@@ -61,9 +92,12 @@ export function ChannelView({
     supabase
       .rpc("mark_channel_read", { cid: channel.id })
       .then(({ error }) => {
-        if (error) console.error("mark_channel_read failed", error.message);
+        if (error) return console.error("mark_channel_read failed", error.message);
+        setChannelRead(channel.id, true);
+        // Reading the channel also clears mentions of you in it.
+        if (inboxUnread > 0) refreshInbox();
       });
-  }, [channel.id, setChannelRead, supabase]);
+  }, [channel.id, setChannelRead, supabase, inboxUnread, refreshInbox]);
 
   useEffect(() => {
     const visible = () => document.visibilityState === "visible";
@@ -121,7 +155,8 @@ export function ChannelView({
   const canManage = isClientChannel && (profile.role === "admin" || profile.role === "owner");
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1">
+      <div className="flex min-w-0 flex-1 flex-col">
       <TopBar
         accent={program?.accent}
         title={
@@ -163,6 +198,8 @@ export function ChannelView({
         onRetry={chat.retry}
         onCreateTicket={isStaff ? setTicketFrom : undefined}
         canCreateTicket={canCreateTicket}
+        onOpenThread={openThread}
+        highlightId={channelHighlight}
         intro={
           <div className="px-4 pt-10 pb-2 md:px-6 md:pt-14">
             <p className="note text-muted-foreground flex items-center gap-2 text-[15px]">
@@ -202,11 +239,32 @@ export function ChannelView({
         {announcement}
       </div>
 
+      <TypingIndicator typers={typing.typers} />
       {canPost ? (
-        <Composer draftId={channel.id} placeholder={`Message #${channel.name}`} onSend={send} />
+        <Composer
+          draftId={channel.id}
+          placeholder={`Message #${channel.name}`}
+          onSend={send}
+          mentionScope={{ channelId: channel.id }}
+          onTyping={typing.typing}
+          onStopTyping={typing.stopped}
+        />
       ) : (
         <ReadOnlyNotice channelName={channel.name} />
       )}
-    </>
+      </div>
+
+      {threadId && (
+        <ThreadPanel
+          key={threadId}
+          channel={channel}
+          parentId={threadId}
+          parent={threadParent}
+          parentActions={{ onReact: chat.toggleReaction, onEdit: chat.edit, onDelete: chat.remove, onRetry: chat.retry }}
+          highlightId={threadHighlight}
+          onClose={closeThread}
+        />
+      )}
+    </div>
   );
 }

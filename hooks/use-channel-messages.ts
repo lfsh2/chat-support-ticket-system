@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { joinChannel } from "@/lib/supabase/realtime";
 import type { Tables } from "@/lib/database.types";
 import {
   MAX_ATTACHMENT_BYTES,
@@ -23,8 +24,11 @@ export function messagesKey(scopeId: string) {
   return ["messages", scopeId] as const;
 }
 
-/** Which stream a message list belongs to: a channel, or a ticket's private thread. */
-export type MessageScope = { column: "channel_id" | "ticket_id"; id: string };
+/**
+ * Which stream a message list belongs to: a channel, or a ticket's private thread. With
+ * `parentId`, it's the replies in one message's thread (oldest first, like the channel).
+ */
+export type MessageScope = { column: "channel_id" | "ticket_id"; id: string; parentId?: string };
 export type SendKind = "user" | "internal_note";
 
 function safeName(name: string) {
@@ -32,7 +36,7 @@ function safeName(name: string) {
 }
 
 export function friendlyError(error: { message?: string; hint?: string } | null | undefined) {
-  if (error?.hint === "rate_limited" && error.message) return error.message;
+  if ((error?.hint === "rate_limited" || error?.hint === "bad_parent") && error.message) return error.message;
   return "Your message didn't send. Check your connection and tap Retry.";
 }
 
@@ -47,26 +51,24 @@ export function useMessages({
 }: {
   scope: MessageScope;
   me: Author;
-  initialMessages: ChatMessage[];
+  /** Server-rendered first page. Leave out to fetch on mount (threads). */
+  initialMessages?: ChatMessage[];
 }) {
-  const { column, id: scopeId } = scope;
+  const { column, id: scopeId, parentId } = scope;
+  // Cache key and realtime topic: the channel/ticket, or the thread.
+  const key = parentId ? `thread:${parentId}` : scopeId;
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
   const query = useInfiniteQuery({
-    queryKey: messagesKey(scopeId),
+    queryKey: messagesKey(key),
     initialPageParam: null as string | null,
-    initialData: { pages: [initialMessages], pageParams: [null] },
+    ...(initialMessages ? { initialData: { pages: [initialMessages], pageParams: [null] } } : {}),
     staleTime: Infinity, // realtime keeps it fresh
     queryFn: async ({ pageParam }) => {
-      let q = supabase
-        .from("messages")
-        .select(MESSAGE_SELECT)
-        .eq(column, scopeId)
-        .is("parent_id", null)
-        .order("created_at", { ascending: false })
-        .limit(PAGE_SIZE);
+      let q = supabase.from("messages").select(MESSAGE_SELECT);
+      q = parentId ? q.eq("parent_id", parentId) : q.eq(column, scopeId).is("parent_id", null);
       if (pageParam) q = q.lt("created_at", pageParam);
-      const { data, error } = await q;
+      const { data, error } = await q.order("created_at", { ascending: false }).limit(PAGE_SIZE);
       if (error) throw error;
       return data as unknown as ChatMessage[];
     },
@@ -76,7 +78,7 @@ export function useMessages({
   // --- cache helpers -------------------------------------------------------
   const patch = useCallback(
     (fn: (m: ChatMessage) => ChatMessage | null, id?: string) => {
-      queryClient.setQueryData<Pages>(messagesKey(scopeId), (data) =>
+      queryClient.setQueryData<Pages>(messagesKey(key), (data) =>
         data
           ? {
               ...data,
@@ -91,12 +93,12 @@ export function useMessages({
           : data,
       );
     },
-    [queryClient, scopeId],
+    [queryClient, key],
   );
 
   const upsertNewest = useCallback(
     (msg: ChatMessage) => {
-      queryClient.setQueryData<Pages>(messagesKey(scopeId), (data) => {
+      queryClient.setQueryData<Pages>(messagesKey(key), (data) => {
         if (!data) return data;
         const exists = data.pages.some((p) => p.some((m) => m.id === msg.id));
         if (exists) {
@@ -106,7 +108,7 @@ export function useMessages({
         return { ...data, pages: [[msg, ...first], ...rest] };
       });
     },
-    [queryClient, scopeId],
+    [queryClient, key],
   );
 
   const fetchOne = useCallback(
@@ -119,21 +121,21 @@ export function useMessages({
 
   // --- realtime -------------------------------------------------------------
   useEffect(() => {
-    const sub = supabase
-      .channel(`messages:${scopeId}`)
+    const filter = parentId ? `parent_id=eq.${parentId}` : `${column}=eq.${scopeId}`;
+    return joinChannel(supabase, `messages:${key}`, undefined, (sub) => sub
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `${column}=eq.${scopeId}` },
+        { event: "INSERT", schema: "public", table: "messages", filter },
         async (payload) => {
           const row = payload.new as Tables<"messages">;
-          if (row.parent_id) return; // thread replies arrive in Phase 3's thread view
+          if (row.parent_id && !parentId) return; // thread replies live in the thread panel
           const full = await fetchOne(row.id);
           if (full) upsertNewest(full);
         },
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "messages", filter: `${column}=eq.${scopeId}` },
+        { event: "UPDATE", schema: "public", table: "messages", filter },
         (payload) => {
           const row = payload.new as Tables<"messages">;
           patch(
@@ -152,7 +154,7 @@ export function useMessages({
       )
       .on(
         "postgres_changes",
-        { event: "DELETE", schema: "public", table: "messages", filter: `${column}=eq.${scopeId}` },
+        { event: "DELETE", schema: "public", table: "messages", filter },
         (payload) => patch(() => null, (payload.old as { id: string }).id),
       )
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "reactions" }, (payload) => {
@@ -177,12 +179,9 @@ export function useMessages({
         if (status !== "SUBSCRIBED") return;
         // Catch up on anything sent between the server render and this subscription
         // going live (and after any reconnect).
-        void queryClient.refetchQueries({ queryKey: messagesKey(scopeId) });
-      });
-    return () => {
-      supabase.removeChannel(sub);
-    };
-  }, [supabase, column, scopeId, fetchOne, patch, upsertNewest, queryClient]);
+        void queryClient.refetchQueries({ queryKey: messagesKey(key) });
+      }));
+  }, [supabase, column, scopeId, parentId, key, fetchOne, patch, upsertNewest, queryClient]);
 
   // --- mutations ------------------------------------------------------------
   const deliver = useCallback(
@@ -211,6 +210,7 @@ export function useMessages({
           .insert({
             id,
             ...(column === "ticket_id" ? { ticket_id: scopeId } : { channel_id: scopeId }),
+            parent_id: parentId ?? null,
             author_id: me.id,
             kind: job.kind,
             body: job.body,
@@ -227,7 +227,7 @@ export function useMessages({
         toast.error(friendlyError(err as { message?: string; hint?: string }));
       }
     },
-    [column, scopeId, me.id, patch, supabase, upsertNewest],
+    [column, scopeId, parentId, me.id, patch, supabase, upsertNewest],
   );
 
   const send = useCallback(
@@ -243,7 +243,7 @@ export function useMessages({
         id,
         channel_id: column === "channel_id" ? scopeId : null,
         ticket_id: column === "ticket_id" ? scopeId : null,
-        parent_id: null,
+        parent_id: parentId ?? null,
         author_id: me.id,
         kind,
         body,
@@ -267,7 +267,7 @@ export function useMessages({
       void deliver(id);
       return true;
     },
-    [column, scopeId, deliver, me, upsertNewest],
+    [column, scopeId, parentId, deliver, me, upsertNewest],
   );
 
   const edit = useCallback(
@@ -329,6 +329,7 @@ export function useMessages({
 
   return {
     messages,
+    loading: query.isPending,
     hasOlder: query.hasNextPage,
     loadingOlder: query.isFetchingNextPage,
     loadOlder: query.fetchNextPage,

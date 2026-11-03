@@ -132,4 +132,5 @@ be sent within a day is dropped rather than sent late.
 - **Email notifications** only go out through the CoachOS mailbox (step 8): team replies and
   "resolved" notices on tickets. There are no other notification emails yet.
 - **No Stripe sync** — paying doesn't grant access automatically; use `pnpm hub grant`.
-- **No admin Members screen**, Inbox, threads or @mentions yet.
+- **No admin Members screen** or help-article (`/kb`) pages yet. (Threads, @mentions, the Inbox,
+  typing indicators, online dots and ⌘K search are live.)

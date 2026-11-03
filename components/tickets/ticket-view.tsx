@@ -12,7 +12,9 @@ import { UserAvatar } from "@/components/shell/user-avatar";
 import { useHub } from "@/components/shell/hub-context";
 import { Composer } from "@/components/chat/composer";
 import { MessageList, type MessageListHandle } from "@/components/chat/message-list";
+import { TypingIndicator } from "@/components/chat/typing-indicator";
 import { useMessages, type SendKind } from "@/hooks/use-channel-messages";
+import { useTyping } from "@/hooks/use-typing";
 import { createClient } from "@/lib/supabase/client";
 import { buildListItems } from "@/lib/chat/group";
 import type { ChatMessage } from "@/lib/chat/types";
@@ -33,6 +35,7 @@ export function TicketView({
   initialMessages,
   panel,
   emailTo = null,
+  highlightId = null,
 }: {
   ticket: TicketDetail;
   initialMessages: ChatMessage[];
@@ -40,8 +43,10 @@ export function TicketView({
   panel: TicketPanelData | null;
   /** Staff only: the client's address when replies are also sent by email. */
   emailTo?: string | null;
+  /** A message to scroll to and flash (from the Inbox). */
+  highlightId?: string | null;
 }) {
-  const { profile, isStaff } = useHub();
+  const { profile, isStaff, refreshInbox } = useHub();
   const router = useRouter();
   const timeZone = safeTimeZone(profile.timezone);
   const supabase = useMemo(() => createClient(), []);
@@ -95,7 +100,18 @@ export function TicketView({
     }
   }, [newest, profile.id]);
 
+  // Seeing the ticket clears its Inbox items (including replies that arrive while it's open).
+  useEffect(() => {
+    if (document.visibilityState !== "visible") return;
+    supabase.rpc("clear_notifications", { tid: ticket.id }).then(({ data }) => {
+      if (data) refreshInbox();
+    });
+  }, [supabase, ticket.id, newest?.id, refreshInbox]);
+
   const [mode, setMode] = useState<SendKind>("user");
+  // "Jon is typing…" for replies only; drafting an internal note stays private.
+  const typingMe = useMemo(() => ({ id: profile.id, name: profile.display_name }), [profile.id, profile.display_name]);
+  const typing = useTyping(`ticket:${ticket.id}`, typingMe);
   const send = useCallback(
     (body: string, files: File[]) => {
       const ok = chat.send(body, files, isStaff ? mode : "user");
@@ -167,6 +183,7 @@ export function TicketView({
           onEdit={chat.edit}
           onDelete={chat.remove}
           onRetry={chat.retry}
+          highlightId={highlightId}
           intro={
             <div className="px-4 pt-8 pb-2 md:px-6 md:pt-12">
               <p className="note text-muted-foreground text-[15px]">
@@ -209,8 +226,13 @@ export function TicketView({
             </Button>
           </div>
         ) : (
+          <>
+          <TypingIndicator typers={typing.typers} />
           <Composer
             draftId={`ticket:${ticket.id}`}
+            mentionScope={{ ticketId: ticket.id, notes: mode === "internal_note" }}
+            onTyping={mode === "user" ? typing.typing : undefined}
+            onStopTyping={typing.stopped}
             placeholder={
               mode === "internal_note"
                 ? "Add a note only the team can see"
@@ -246,6 +268,7 @@ export function TicketView({
               <p className="text-muted-foreground mb-1.5 text-xs">Your reply will also be emailed to {emailTo} from the CoachOS inbox.</p>
             )}
           </Composer>
+          </>
         )}
       </div>
 

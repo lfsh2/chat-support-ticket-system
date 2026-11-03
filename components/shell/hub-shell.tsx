@@ -4,22 +4,27 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { AppSidebar } from "./app-sidebar";
 import { BottomTabs } from "./bottom-tabs";
+import { PresenceProvider } from "@/hooks/use-presence";
+import { CommandMenu } from "./command-menu";
 import { HubProvider, type HubChannel, type HubProfile, type UnreadCounts } from "./hub-context";
 
 export function HubShell({
   profile,
   channels,
   initialUnread,
+  initialInboxUnread,
   children,
 }: {
   profile: HubProfile;
   channels: HubChannel[];
   initialUnread: UnreadCounts;
+  initialInboxUnread: number;
   children: React.ReactNode;
 }) {
   useKeyboardInset();
   return (
-    <HubProvider profile={profile} channels={channels} initialUnread={initialUnread}>
+    <HubProvider profile={profile} channels={channels} initialUnread={initialUnread} initialInboxUnread={initialInboxUnread}>
+      <PresenceProvider userId={profile.id}>
       {/* Pinned to the visual viewport so the composer rides above the keyboard. */}
       <div className="fixed inset-x-0 top-(--app-top,0px) h-(--app-height,100dvh) overflow-hidden">
         <SidebarProvider className="h-full min-h-0">
@@ -30,6 +35,8 @@ export function HubShell({
           </SidebarInset>
         </SidebarProvider>
       </div>
+      <CommandMenu />
+      </PresenceProvider>
     </HubProvider>
   );
 }

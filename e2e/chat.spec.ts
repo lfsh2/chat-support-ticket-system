@@ -48,10 +48,13 @@ test("unread badges appear for new messages and clear on read", async ({ browser
   const b = await userPage(browser, "both@example.com");
   await a.goto("/c/general");
   await b.goto("/c/wins");
-  // Make sure A starts with #wins read (wait for the read receipt to land).
-  const marked = a.waitForResponse((r) => r.url().includes("mark_channel_read") && r.ok());
-  await a.goto("/c/wins");
-  await marked;
+  // Make sure A starts with everything read: the seeded welcome in #announcements, and #wins
+  // (wait for each read receipt to land).
+  for (const slug of ["announcements", "wins"]) {
+    const marked = a.waitForResponse((r) => r.url().includes("mark_channel_read") && r.ok());
+    await a.goto(`/c/${slug}`);
+    await marked;
+  }
   await a.goto("/c/general");
   const chatTab = a.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /Chat/ });
   await expect(chatTab).toHaveText("Chat");

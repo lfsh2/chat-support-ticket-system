@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
+import { stripMentions } from "@/lib/mentions";
 import { buildRawEmail, ticketEmailBodies } from "./mime";
 
 type Db = SupabaseClient<Database>;
@@ -79,7 +80,7 @@ async function sendOne(
       .eq("id", job.message_id ?? "")
       .maybeSingle();
     if (!m || m.deleted_at || m.kind !== "user" || !m.body.trim()) return skip("message deleted, empty or internal");
-    message = m.body;
+    message = stripMentions(m.body); // mentions read as "@Jon", not markup
     signedBy = (m.author as { display_name: string } | null)?.display_name.replace(/\s*\(.*?\)\s*/g, " ").trim() || signedBy;
   }
 

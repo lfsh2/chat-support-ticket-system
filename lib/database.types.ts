@@ -432,6 +432,9 @@ isOneToOne: false
               "channel_id": string,"unread": number
             }[]
                            },
+"clear_notifications":
+{ Args: { "pid"?: string,"tid"?: string }; Returns: number
+                           },
 "client_channel_parent":
 { Args: { "p": Database["public"]['Enums']["program"] }; Returns: string
                            },
@@ -458,6 +461,11 @@ isOneToOne: false
 "mark_channel_read":
 { Args: { "cid": string }; Returns: undefined
                            },
+"mention_candidates":
+{ Args: { "cid"?: string,"notes"?: boolean,"tid"?: string }; Returns: {
+              "avatar_url": string,"display_name": string,"id": string,"role": Database["public"]['Enums']["user_role"]
+            }[]
+                           },
 "open_ticket":
 { Args: { "p_body": string,"p_category": Database["public"]['Enums']["ticket_category"],"p_priority"?: Database["public"]['Enums']["ticket_priority"],"p_program": Database["public"]['Enums']["program"],"p_subject": string }; Returns: {
               "id": string,"number": number
@@ -468,6 +476,15 @@ isOneToOne: false
                            },
 "slugify":
 { Args: { "t": string }; Returns: string
+                           },
+"user_can_see_channel":
+{ Args: { "cid": string,"uid": string }; Returns: boolean
+                           },
+"user_can_see_message":
+{ Args: { "mid": string,"uid": string }; Returns: boolean
+                           },
+"user_has_program":
+{ Args: { "p": Database["public"]['Enums']["program"],"uid": string }; Returns: boolean
                            }
           }
           Enums: {

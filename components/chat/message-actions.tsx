@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, MoreHorizontal, Pencil, SmilePlus, Ticket, Trash2 } from "lucide-react";
+import { Copy, MessageSquareReply, MoreHorizontal, Pencil, SmilePlus, Ticket, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -27,6 +27,8 @@ export type MessageActionHandlers = {
   onDelete: () => void;
   /** Team only: turn this message into a ticket (absent when not allowed). */
   onCreateTicket?: () => void;
+  /** Open this message's thread (absent inside a thread, and in tickets). */
+  onReply?: () => void;
 };
 
 function EmojiRow({ onReact, size = "md" }: { onReact: (emoji: string) => void; size?: "md" | "lg" }) {
@@ -52,7 +54,7 @@ function EmojiRow({ onReact, size = "md" }: { onReact: (emoji: string) => void; 
 }
 
 /** Desktop: floating toolbar shown on hover/focus. */
-export function MessageToolbar({ canEdit, canDelete, onReact, onCopy, onEdit, onDelete, onCreateTicket }: MessageActionHandlers) {
+export function MessageToolbar({ canEdit, canDelete, onReact, onCopy, onEdit, onDelete, onCreateTicket, onReply }: MessageActionHandlers) {
   return (
     <div className="bg-card border-rule absolute -top-4 right-4 z-10 hidden items-center rounded-md border p-0.5 opacity-0 md:right-6 transition-opacity group-focus-within/message:opacity-100 group-hover/message:opacity-100 md:flex has-data-popup-open:opacity-100 has-aria-expanded:opacity-100">
       {QUICK_REACTIONS.slice(0, 3).map((emoji) => (
@@ -68,6 +70,11 @@ export function MessageToolbar({ canEdit, canDelete, onReact, onCopy, onEdit, on
           <EmojiRow onReact={onReact} />
         </PopoverContent>
       </Popover>
+      {onReply && (
+        <Button variant="ghost" size="icon-sm" onClick={onReply} aria-label="Reply in thread">
+          <MessageSquareReply />
+        </Button>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="More actions" />}>
           <MoreHorizontal />
@@ -101,13 +108,18 @@ export function MessageToolbar({ canEdit, canDelete, onReact, onCopy, onEdit, on
 }
 
 /** Desktop: right-click menu (rendered inside a <ContextMenu>). */
-export function MessageContextMenu({ canEdit, canDelete, onReact, onCopy, onEdit, onDelete, onCreateTicket }: MessageActionHandlers) {
+export function MessageContextMenu({ canEdit, canDelete, onReact, onCopy, onEdit, onDelete, onCreateTicket, onReply }: MessageActionHandlers) {
   return (
     <ContextMenuContent className="min-w-44">
       <div className="p-1">
         <EmojiRow onReact={onReact} />
       </div>
       <ContextMenuSeparator />
+      {onReply && (
+        <ContextMenuItem onClick={onReply}>
+          <MessageSquareReply /> Reply in thread
+        </ContextMenuItem>
+      )}
       {onCreateTicket && (
         <ContextMenuItem onClick={onCreateTicket}>
           <Ticket /> Create ticket
@@ -152,6 +164,11 @@ export function MessageActionDrawer({
           <EmojiRow size="lg" onReact={(e) => run(() => h.onReact(e))()} />
         </div>
         <div className="flex flex-col px-2">
+          {h.onReply && (
+            <Button variant="ghost" className="h-12 justify-start gap-3 px-4 text-base" onClick={run(h.onReply)}>
+              <MessageSquareReply className="size-5" /> Reply in thread
+            </Button>
+          )}
           {h.onCreateTicket && (
             <Button variant="ghost" className="h-12 justify-start gap-3 px-4 text-base" onClick={run(h.onCreateTicket)}>
               <Ticket className="size-5" /> Create ticket

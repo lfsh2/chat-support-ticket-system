@@ -24,7 +24,7 @@ function tabsFor(isStaff: boolean): Tab[] {
 
 export function BottomTabs() {
   const pathname = usePathname();
-  const { unread, isStaff } = useHub();
+  const { unread, isStaff, inboxUnread } = useHub();
   const chatUnread = Object.values(unread).reduce((a, b) => a + b, 0);
 
   return (
@@ -35,7 +35,8 @@ export function BottomTabs() {
       <ul className="grid grid-cols-5">
         {tabsFor(isStaff).map(({ href, match, exact, label, icon: Icon }) => {
           const active = match.some((m) => pathname === m || (!exact && pathname.startsWith(`${m}/`)));
-          const badge = label === "Chat" && chatUnread > 0 ? formatCount(chatUnread) : null;
+          const count = label === "Chat" ? chatUnread : label === "Inbox" ? inboxUnread : 0;
+          const badge = count > 0 ? formatCount(count) : null;
           return (
             <li key={href}>
               <Link

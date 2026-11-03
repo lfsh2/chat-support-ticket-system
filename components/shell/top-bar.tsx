@@ -1,9 +1,10 @@
 "use client";
 
-import { Menu } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { openCommandMenu } from "./command-menu";
 
 /**
  * Page header. The top rule carries the program colour (brown / blue / ink for shared),
@@ -61,6 +62,16 @@ export function TopBar({
         )}
       </div>
       {actions}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-muted-foreground hover:text-foreground size-11 shrink-0 cursor-pointer"
+        onClick={openCommandMenu}
+        aria-label="Search"
+        title="Search (⌘K)"
+      >
+        <Search className="size-5" />
+      </Button>
     </header>
   );
 }

@@ -3,7 +3,7 @@ import { requireHubAccess } from "@/lib/session";
 
 export default async function HubLayout({ children }: LayoutProps<"/">) {
   const { supabase, profile } = await requireHubAccess();
-  const [{ data: channels }, { data: unread }] = await Promise.all([
+  const [{ data: channels }, { data: unread }, { count: inboxUnread }] = await Promise.all([
     supabase
       .from("channels")
       .select("id, slug, name, description, program, type, position, parent_id, client_id, staff_only")
@@ -11,6 +11,10 @@ export default async function HubLayout({ children }: LayoutProps<"/">) {
       .order("position")
       .order("name"),
     supabase.rpc("channel_unread_counts"),
+    supabase
+      .from("notifications")
+      .select("id, message:messages!notifications_message_id_fkey!inner(id)", { count: "exact", head: true })
+      .is("read_at", null),
   ]);
 
   return (
@@ -25,6 +29,7 @@ export default async function HubLayout({ children }: LayoutProps<"/">) {
       }}
       channels={channels ?? []}
       initialUnread={Object.fromEntries((unread ?? []).map((r) => [r.channel_id, r.unread]))}
+      initialInboxUnread={inboxUnread ?? 0}
     >
       {children}
     </HubShell>

@@ -22,12 +22,14 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useLongPress } from "@/hooks/use-long-press";
 import { isStaffRole } from "@/lib/access";
 import { toPlainText } from "@/lib/markdown";
+import { bodyToDraft, draftToBody } from "@/lib/mentions";
 import { formatTime, formatTimeShort } from "@/lib/time";
 import type { ChatMessage } from "@/lib/chat/types";
 import { cn } from "@/lib/utils";
 import { AttachmentPreview } from "./attachment-preview";
 import { MessageBody } from "./message-body";
 import { MessageActionDrawer, MessageContextMenu, MessageToolbar, type MessageActionHandlers } from "./message-actions";
+import { PresenceDot } from "./presence-dot";
 import { ReactionBar } from "./reaction-bar";
 
 type Props = {
@@ -43,6 +45,12 @@ type Props = {
   /** Team: turn a message into a ticket. Both must be stable (they're memo inputs). */
   onCreateTicket?: (message: ChatMessage) => void;
   canCreateTicket?: (message: ChatMessage) => boolean;
+  /** Open this message's thread. Absent inside a thread and in tickets. Must be stable. */
+  onOpenThread?: (message: ChatMessage) => void;
+  /** Flash this row (deep link from the Inbox). */
+  highlighted?: boolean;
+  /** Element id; the thread panel's copy of a parent uses its own so ids stay unique. */
+  domId?: string;
 };
 
 type TicketRef = { number: number; requester_id: string };
@@ -74,9 +82,11 @@ function TicketChip({ number }: { number: number }) {
 }
 
 function EditBox({ initial, onSave, onCancel }: { initial: string; onSave: (body: string) => void; onCancel: () => void }) {
-  const [value, setValue] = useState(initial);
+  // Show mentions as "@Name" while editing; keep them as mentions when saving.
+  const [draft] = useState(() => bodyToDraft(initial));
+  const [value, setValue] = useState(draft.text);
   const save = () => {
-    const body = value.trim();
+    const body = draftToBody(value.trim(), draft.mentions);
     if (!body || body === initial) return onCancel();
     onSave(body);
   };
@@ -122,6 +132,9 @@ export const MessageItem = memo(function MessageItem({
   onRetry,
   onCreateTicket,
   canCreateTicket,
+  onOpenThread,
+  highlighted = false,
+  domId,
 }: Props) {
   const isMobile = useIsMobile();
   const [editing, setEditing] = useState(false);
@@ -151,6 +164,7 @@ export const MessageItem = memo(function MessageItem({
     onEdit: () => setEditing(true),
     onDelete: () => setConfirmDelete(true),
     onCreateTicket: ticketable ? () => onCreateTicket?.(message) : undefined,
+    onReply: onOpenThread && message.kind !== "internal_note" ? () => onOpenThread(message) : undefined,
   };
 
   const openDrawer = useCallback(() => setDrawerOpen(true), []);
@@ -160,7 +174,7 @@ export const MessageItem = memo(function MessageItem({
   const row = (
     <div
       {...(interactive && isMobile ? longPress : {})}
-      id={`message-${message.id}`}
+      id={domId ?? `message-${message.id}`}
       className={cn(
         "group/message relative flex gap-3 px-4 transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--foreground)_3%,transparent)] md:px-6",
         isGroupStart ? "mt-2.5 pt-1.5 pb-0.5" : "py-0.5",
@@ -169,12 +183,17 @@ export const MessageItem = memo(function MessageItem({
           "border-warning bg-[color-mix(in_oklab,var(--warning)_9%,transparent)] hover:bg-[color-mix(in_oklab,var(--warning)_13%,transparent)] my-1 border-l-[3px] py-2",
         message.status === "sending" && "opacity-60",
         message.status && "animate-in slide-in-from-bottom-2 fade-in motion-reduce:animate-none duration-200",
+        // Arrived from the Inbox: a soft wash that fades out.
+        highlighted && "message-highlight",
         "select-none md:select-text",
       )}
     >
       <div className="w-9 shrink-0">
         {isGroupStart ? (
-          <UserAvatar name={authorName} src={message.author?.avatar_url} seed={message.author_id ?? undefined} />
+          <span className="relative block size-9">
+            <UserAvatar name={authorName} src={message.author?.avatar_url} seed={message.author_id ?? undefined} />
+            <PresenceDot userId={message.author_id} />
+          </span>
         ) : (
           <time
             dateTime={message.created_at ?? undefined}
@@ -253,12 +272,22 @@ export const MessageItem = memo(function MessageItem({
 
         {!deleted && <ReactionBar reactions={message.reactions} myId={myId} onToggle={handlers.onReact} />}
 
-        {message.reply_count > 0 && (
-          <p className="text-primary mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold">
-            <MessageSquare className="size-3.5" aria-hidden />
-            {message.reply_count} {message.reply_count === 1 ? "reply" : "replies"}
-          </p>
-        )}
+        {message.reply_count > 0 &&
+          (onOpenThread ? (
+            <button
+              type="button"
+              onClick={() => onOpenThread(message)}
+              className="text-primary hover:bg-primary/5 -ml-1.5 mt-1 inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md px-1.5 text-[13px] font-semibold md:min-h-7"
+            >
+              <MessageSquare className="size-3.5" aria-hidden />
+              {message.reply_count} {message.reply_count === 1 ? "reply" : "replies"}
+            </button>
+          ) : (
+            <p className="text-primary mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold">
+              <MessageSquare className="size-3.5" aria-hidden />
+              {message.reply_count} {message.reply_count === 1 ? "reply" : "replies"}
+            </p>
+          ))}
       </div>
 
       {interactive && !isMobile && <MessageToolbar {...handlers} />}

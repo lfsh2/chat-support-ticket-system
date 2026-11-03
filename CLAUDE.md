@@ -398,6 +398,14 @@ create table stripe_price_map (         -- which Stripe price unlocks which prog
 - **memberships:** members read their own; only service role writes.
 - **kb_articles:** published + program visible, or staff.
 
+Phase 3 (migration `20261103000001`): one visibility rule for any user (`user_can_see_channel`,
+`user_can_see_message`; `can_see_channel` delegates to it), so mention/thread notifications only reach
+people who can open the message; thread replies must hang off a top-level message in the same place;
+`mention_candidates()` for the composer; `clear_notifications()` and `mark_channel_read()` clear Inbox
+items once seen. Mentions are stored as `@[Name](user:<id>)` (`lib/mentions.ts`); typing uses Realtime
+Broadcast, online dots Presence (`hub:presence`); join Realtime channels with `joinChannel()`
+(`lib/supabase/realtime.ts`) so quick remounts don't attach to a channel that's closing.
+
 Triggers: update `reply_count`; bump `tickets.updated_at`; set `first_response_at` on first staff message; create `notifications` rows for mentions/thread replies/ticket updates; link `memberships.user_id` on profile creation by email.
 
 **Added beyond the original spec** (see `supabase/migrations/2026100900000*`):
@@ -516,10 +524,11 @@ docs/
 
 ## 12. Build phases & acceptance criteria
 
-> **Status (2026-10-09):** Phases 1–2 done. Phase 4 mostly done, plus a role-aware dashboard,
-> team task tracker and calendar (not in the original spec). Phase 4 still missing: KB suggestions
-> while typing, attachments in the new-ticket flow, auto-close after 14 days. Phases 3, 5, 6 not
-> started. Demo modes were removed for go-live; only local `DEV_LOGIN` remains.
+> **Status (2026-11-03):** Phases 1–3 done. Phase 4 mostly done, plus a role-aware dashboard,
+> team task tracker, calendar, private client channels, the CoachOS mailbox and chat → ticket
+> (not in the original spec). Phase 4 still missing: KB suggestions while typing, attachments in the
+> new-ticket flow, auto-close after 14 days. Phases 5, 6 not started; there are no `/kb` pages yet,
+> so ⌘K doesn't list help articles. Demo modes were removed for go-live; only local `DEV_LOGIN` remains.
 
 **Phase 1: Foundation**
 - Next.js + TS + Tailwind + shadcn initialized; theme tokens from §3; Figtree font; dark mode.
