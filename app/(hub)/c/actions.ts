@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { membershipGrantsAccess, type Program } from "@/lib/access";
+import { ALWAYS_TEAM_ONLY_SLUGS, PROTECTED_CHANNEL_SLUGS, toChannelName } from "@/lib/channels";
 import { Constants } from "@/lib/database.types";
 import { syncMailbox } from "@/lib/gmail/sync";
 import { requireHubAccess } from "@/lib/session";
@@ -13,16 +14,6 @@ import { originFromHeaders } from "@/lib/url";
 type Result = { ok: true } | { ok: false; error: string };
 
 const ADMIN_ROLES = new Set(["admin", "owner"]);
-
-/** "Casey Morgan's site" → "casey-morgan-s-site", matching how channel names read. */
-function toChannelName(raw: string) {
-  return raw
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-}
 
 async function adminClient() {
   const { supabase, profile } = await requireHubAccess();
@@ -61,6 +52,108 @@ export async function archiveClientChannel(id: string): Promise<Result> {
     .not("client_id", "is", null)
     .select("id");
   if (error || !data?.length) return { ok: false, error: "We couldn't archive it. Please try again." };
+  return { ok: true };
+}
+
+const channelFields = z.object({
+  name: z.string().max(80),
+  description: z.string().trim().max(120, "Keep the description under 120 characters."),
+  type: z.enum(Constants.public.Enums.channel_type),
+  staffOnly: z.boolean(),
+});
+const newChannel = channelFields.extend({ program: z.enum(Constants.public.Enums.program).nullable() });
+export type ChannelFields = z.input<typeof channelFields>;
+export type NewChannelInput = z.input<typeof newChannel>;
+
+/** Add a channel (admins): shared, CoachOS or Alive & Free; open to members or team-only. */
+export async function createChannel(input: NewChannelInput): Promise<Result & { slug?: string }> {
+  const parsed = newChannel.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  const name = toChannelName(parsed.data.name);
+  if (name.length < 2) return { ok: false, error: "Use at least two letters or numbers." };
+  if (name.startsWith("client-")) return { ok: false, error: "Names starting with “client-” are kept for private client channels." };
+  const supabase = await adminClient();
+  if (!supabase) return { ok: false, error: "Only admins can add channels." };
+  const { program, description, type, staffOnly } = parsed.data;
+
+  // Admins can see every channel, archived ones included, so this catches all clashes.
+  const { data: taken } = await supabase.from("channels").select("archived_at").eq("slug", name).maybeSingle();
+  if (taken) {
+    return {
+      ok: false,
+      error: taken.archived_at ? `An archived channel is already called #${name}. Pick another name.` : `There's already a #${name} channel.`,
+    };
+  }
+
+  // New channels go to the bottom of their group.
+  const last = supabase.from("channels").select("position").is("parent_id", null);
+  const { data: bottom } = await (program ? last.eq("program", program) : last.is("program", null))
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error } = await supabase.from("channels").insert({
+    slug: name,
+    name,
+    description: description || null,
+    program,
+    type,
+    staff_only: staffOnly,
+    position: (bottom?.position ?? 0) + 1,
+  });
+  if (error) {
+    return { ok: false, error: error.code === "23505" ? `There's already a #${name} channel.` : "That didn't save. Please try again." };
+  }
+  refresh();
+  return { ok: true, slug: name };
+}
+
+/**
+ * Edit a channel's name, description, who can post and team-only (admins). The address
+ * (slug) stays the same so links keep working; the program can't change, because that
+ * would show its history to a different group of clients.
+ */
+export async function updateChannel(id: string, input: ChannelFields): Promise<Result> {
+  const parsed = channelFields.safeParse(input);
+  if (!z.uuid().safeParse(id).success || !parsed.success) {
+    return { ok: false, error: parsed.success ? "Something went wrong." : parsed.error.issues[0].message };
+  }
+  const name = toChannelName(parsed.data.name);
+  if (name.length < 2) return { ok: false, error: "Use at least two letters or numbers." };
+  const supabase = await adminClient();
+  if (!supabase) return { ok: false, error: "Only admins can edit channels." };
+
+  const { data: channel } = await supabase.from("channels").select("slug, client_id").eq("id", id).maybeSingle();
+  if (!channel || channel.client_id) return { ok: false, error: "That channel can't be edited here." };
+  const { description, type, staffOnly } = parsed.data;
+
+  const { error } = await supabase
+    .from("channels")
+    .update({
+      name,
+      description: description || null,
+      type,
+      staff_only: ALWAYS_TEAM_ONLY_SLUGS.has(channel.slug) ? true : staffOnly,
+    })
+    .eq("id", id);
+  if (error) return { ok: false, error: "That didn't save. Please try again." };
+  refresh();
+  return { ok: true };
+}
+
+/** Archive a channel (admins): hidden from the sidebar, messages kept. Core channels can't be archived. */
+export async function archiveChannel(id: string): Promise<Result> {
+  if (!z.uuid().safeParse(id).success) return { ok: false, error: "Something went wrong." };
+  const supabase = await adminClient();
+  if (!supabase) return { ok: false, error: "Only admins can archive channels." };
+
+  const { data: channel } = await supabase.from("channels").select("slug, client_id").eq("id", id).maybeSingle();
+  if (!channel || channel.client_id) return { ok: false, error: "That channel can't be archived here." };
+  if (PROTECTED_CHANNEL_SLUGS.has(channel.slug)) {
+    return { ok: false, error: `#${channel.slug} is used by other parts of the hub, so it can't be archived.` };
+  }
+  const { error } = await supabase.from("channels").update({ archived_at: new Date().toISOString() }).eq("id", id);
+  if (error) return { ok: false, error: "We couldn't archive it. Please try again." };
   return { ok: true };
 }
 

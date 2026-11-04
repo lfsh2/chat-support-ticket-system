@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Hash, Inbox, Lock, Megaphone } from "lucide-react";
+import { ChevronRight, Hash, Inbox, Lock, Megaphone, Plus } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   SidebarGroup,
@@ -16,6 +16,8 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
+import { ChannelFormDialog } from "@/components/chat/channel-form-dialog";
+import type { Program } from "@/lib/access";
 import { PROGRAMS } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { useHub, type HubChannel, type UnreadCounts } from "./hub-context";
@@ -51,8 +53,11 @@ export function UnreadBadge({ count }: { count: number }) {
  * `tabbed` turns the active channel into a paper tab that joins the page (desktop sidebar only).
  */
 export function ChannelNav({ onNavigate, tabbed = false }: { onNavigate?: () => void; tabbed?: boolean }) {
-  const { channels, unread } = useHub();
+  const { channels, unread, profile } = useHub();
   const pathname = usePathname();
+  const isAdmin = profile.role === "admin" || profile.role === "owner";
+  // Which group "Add a channel" was pressed in (undefined = dialog closed).
+  const [addingTo, setAddingTo] = useState<Program | null | undefined>(undefined);
 
   return (
     <>
@@ -116,12 +121,32 @@ export function ChannelNav({ onNavigate, tabbed = false }: { onNavigate?: () => 
                       </SidebarMenuItem>
                     );
                   })}
+                  {isAdmin && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => setAddingTo(group.key)}
+                        className="text-sidebar-foreground/80 hover:text-sidebar-foreground h-11 cursor-pointer gap-2.5 text-[15px] md:h-8 md:text-sm"
+                      >
+                        <Plus className="opacity-60" aria-hidden />
+                        <span>Add a channel</span>
+                        <span className="sr-only"> to {group.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </CollapsibleContent>
           </Collapsible>
         );
       })}
+      {isAdmin && (
+        <ChannelFormDialog
+          open={addingTo !== undefined}
+          onOpenChange={(o) => !o && setAddingTo(undefined)}
+          program={addingTo ?? null}
+          onCreated={onNavigate}
+        />
+      )}
     </>
   );
 }

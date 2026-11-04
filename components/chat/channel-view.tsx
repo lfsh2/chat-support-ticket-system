@@ -15,6 +15,7 @@ import { safeTimeZone } from "@/lib/time";
 import type { ChatMessage } from "@/lib/chat/types";
 import { PROGRAMS } from "@/lib/config";
 import { Composer, ReadOnlyNotice } from "./composer";
+import { ChannelMenu } from "./channel-menu";
 import { ClientChannelMenu } from "./client-channel-menu";
 import { MailboxStatus } from "./mailbox-status";
 import { TicketFromMessageDialog } from "@/components/tickets/ticket-from-message-dialog";
@@ -152,7 +153,7 @@ export function ChannelView({
   const isClientChannel = channel.client_id !== null;
   const Icon = isClientChannel ? Lock : channel.staff_only ? Inbox : channel.type === "announcement" ? Megaphone : Hash;
   const program = channel.program ? PROGRAMS[channel.program] : null;
-  const canManage = isClientChannel && (profile.role === "admin" || profile.role === "owner");
+  const isAdmin = profile.role === "admin" || profile.role === "owner";
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -177,7 +178,9 @@ export function ChannelView({
           </>
         }
         subtitle={channel.description}
-        actions={canManage ? <ClientChannelMenu channel={channel} /> : undefined}
+        actions={
+          !isAdmin ? undefined : isClientChannel ? <ClientChannelMenu channel={channel} /> : <ChannelMenu channelId={channel.id} />
+        }
       />
       {channel.staff_only && channel.slug === "coachos-email-ticket" && <MailboxStatus />}
 
