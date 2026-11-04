@@ -28,16 +28,20 @@ export type InboxDeps = {
  * - anyone else gets a card in that mailbox's team-only channel for the team to handle;
  * - newsletters, receipts, auto-replies and bounces are logged and dropped;
  * - mail the team sent from Gmail itself is mirrored into the ticket it belongs to.
- * Idempotent on the Gmail message id.
+ * Idempotent on the Gmail message id. Mailboxes never mix: a thread only matches tickets that
+ * came through the same mailbox, and one email sent to two connected mailboxes (To support@,
+ * Cc coachos@) is handled once, by whichever reads it first.
  */
 export async function processInboundEmail(db: Db, email: ParsedEmail, deps: InboxDeps): Promise<InboundOutcome> {
   const { data: seen } = await db.from("inbound_emails").select("id").eq("gmail_message_id", email.gmailMessageId).maybeSingle();
   if (seen) return "duplicate";
   if (email.labels.includes("DRAFT") || email.labels.includes("CHAT")) return "ignored";
 
-  const { data: thread } = await db.from("mail_threads").select("*").eq("gmail_thread_id", email.gmailThreadId).maybeSingle();
+  const { data: anyThread } = await db.from("mail_threads").select("*").eq("gmail_thread_id", email.gmailThreadId).maybeSingle();
+  // Gmail thread ids belong to one mailbox; never join a ticket another mailbox owns.
+  const thread = anyThread && (!anyThread.mailbox || anyThread.mailbox.toLowerCase() === deps.inbox) ? anyThread : null;
 
-  // Sent from the CoachOS mailbox: our own outbox email, or a teammate replying in Gmail.
+  // Sent from this mailbox: our own outbox email, or a teammate replying in Gmail.
   if (email.labels.includes("SENT") || email.fromEmail === deps.inbox) {
     const { data: ours } = await db.from("email_outbox").select("id").eq("gmail_message_id", email.gmailMessageId).maybeSingle();
     if (thread && email.messageIdHeader) {
@@ -50,6 +54,23 @@ export async function processInboundEmail(db: Db, email: ParsedEmail, deps: Inbo
     const message = await postTicketMessage(db, thread.ticket_id, null, email, deps, `${deps.inbox} (Gmail)`);
     await log(db, deps, email, "mirrored", { ticket_id: thread.ticket_id, hub_message_id: message });
     return "mirrored";
+  }
+
+  // The same email (same Message-ID) already handled through another connected mailbox.
+  // Copies that mailbox only logged as ignored (e.g. its "sent" copy of a forward to us) don't count.
+  if (email.messageIdHeader) {
+    const { data: twin } = await db
+      .from("inbound_emails")
+      .select("mailbox")
+      .eq("message_id_header", email.messageIdHeader)
+      .neq("mailbox", deps.inbox)
+      .neq("status", "ignored")
+      .limit(1)
+      .maybeSingle();
+    if (twin) {
+      await log(db, deps, email, "ignored", { ignore_reason: `also sent to ${twin.mailbox}; handled there` });
+      return "duplicate";
+    }
   }
 
   const client = await findClient(db, email.fromEmail, deps.program);

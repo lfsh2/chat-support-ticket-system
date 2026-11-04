@@ -26,6 +26,8 @@ export async function POST(request: NextRequest) {
     subject?: string;
     text?: string;
     threadId?: string;
+    /** The RFC Message-ID (the same in every mailbox a message reaches). */
+    messageId?: string;
     labels?: string[];
     headers?: Record<string, string>;
   };
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
   const email: ParsedEmail = {
     gmailMessageId: `dev-${crypto.randomUUID()}`,
     gmailThreadId: body.threadId ?? `dev-thread-${crypto.randomUUID()}`,
-    messageIdHeader: `<${crypto.randomUUID()}@dev.local>`,
+    messageIdHeader: body.messageId ?? `<${crypto.randomUUID()}@dev.local>`,
     inReplyTo: null,
     fromEmail: (body.from ?? "someone@example.org").toLowerCase(),
     fromName: body.name ?? null,

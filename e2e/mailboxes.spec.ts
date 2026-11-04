@@ -112,3 +112,57 @@ test("admins can connect Gmail on any team-only channel; support staff aren't as
   const where = res.headers()["location"] ?? "";
   expect(where.includes("accounts.google.com") || where.includes("gmail=not_configured")).toBe(true);
 });
+
+test("one email sent to both mailboxes opens one ticket, not two", async ({ browser }) => {
+  const staff = await signedIn(browser, "owner", `/c/${FEED_SLUG}`);
+  const subject = tag("Sent to both addresses");
+  const messageId = `<${Date.now().toString(36)}-both@client.example>`;
+
+  const first = await dev(staff.request, { action: "receive", from: "both@example.com", name: "Bailey Both", subject, text: "Hi both teams", messageId });
+  expect(first.outcome).toBe("ticket");
+  const second = await dev(staff.request, { action: "receive", inbox: SUPPORT, from: "both@example.com", name: "Bailey Both", subject, text: "Hi both teams", messageId });
+  expect(second.outcome).toBe("duplicate");
+
+  const { count } = await admin().from("tickets").select("id", { count: "exact", head: true }).eq("subject", subject);
+  expect(count).toBe(1);
+  // Only the first mailbox's feed carries it.
+  await staff.reload();
+  await expect(staff.getByText(subject)).toHaveCount(0);
+  await staff.goto("/c/coachos-email-ticket");
+  await expect(staff.getByRole("article").filter({ hasText: subject })).toBeVisible({ timeout: 10_000 });
+});
+
+test("a forward from support@ to coachos@ still reaches coachos@'s feed", async ({ browser }) => {
+  const staff = await signedIn(browser, "owner", "/c/coachos-email-ticket");
+  const subject = tag("Fwd: please help this client");
+  const messageId = `<${Date.now().toString(36)}-fwd@example.com>`;
+
+  // support@'s own "sent" copy is only logged…
+  const sentCopy = await dev(staff.request, { action: "receive", inbox: SUPPORT, from: SUPPORT, subject, text: "Can you help?", messageId, labels: ["SENT"] });
+  expect(sentCopy.outcome).toBe("ignored");
+  // …so the copy arriving at coachos@ is handled as usual.
+  const arrived = await dev(staff.request, { action: "receive", from: SUPPORT, name: "Alive & Free Support", subject, text: "Can you help?", messageId });
+  expect(arrived.outcome).toBe("unmatched");
+  await expect(staff.getByRole("article").filter({ hasText: subject })).toBeVisible({ timeout: 10_000 });
+});
+
+test("a thread from one mailbox never joins a ticket from the other", async ({ browser }) => {
+  const staff = await signedIn(browser, "owner", `/c/${FEED_SLUG}`);
+  const subject = tag("Thread ids stay per mailbox");
+  const viaSupport = await dev(staff.request, { action: "receive", inbox: SUPPORT, from: "both@example.com", name: "Bailey Both", subject, text: "First" });
+  expect(viaSupport.outcome).toBe("ticket");
+
+  // Same Gmail thread id, but arriving at coachos@: a new CoachOS ticket, not a reply on support@'s.
+  const viaCoachos = await dev(staff.request, {
+    action: "receive",
+    from: "both@example.com",
+    name: "Bailey Both",
+    subject: `Re: ${subject}`,
+    text: "Second",
+    threadId: viaSupport.threadId,
+  });
+  expect(viaCoachos.outcome).toBe("ticket");
+  expect(viaCoachos.ticketNumber).not.toBe(viaSupport.ticketNumber);
+  const { data } = await admin().from("tickets").select("program").eq("number", viaCoachos.ticketNumber).single();
+  expect(data?.program).toBe("coachos");
+});
