@@ -120,9 +120,13 @@ ticket are emailed back from coachos@, in the same Gmail thread.
 3. **Every-minute check:** in Supabase → SQL Editor, run `supabase/mail-cron.sql` with your app
    URL and the same `CRON_SECRET`.
 4. **Connect:** as an admin, open **#coachos-email-ticket → Connect Gmail** and sign in as
-   coachos@aliveandfreeconsulting.com. Only that account is accepted. From then on, new mail
-   appears within a minute (or press **Check now**). Mail that arrived before connecting isn't
-   imported.
+   coachos@aliveandfreeconsulting.com. From then on, new mail appears within a minute (or press
+   **Check now**). Mail that arrived before connecting isn't imported.
+5. **More mailboxes (support@ and others):** create a **team-only** channel for it (for example
+   #support-email-ticket under Alive & Free), open it, press **Connect Gmail** and sign in as
+   that account. Its client emails open tickets in that channel's program, and replies go out
+   from that address. Each mailbox feeds one channel. The account must be in the same Google
+   Workspace as the OAuth client (it's an Internal app).
 
 Replies are only queued for email while the mailbox is connected, and anything that couldn't
 be sent within a day is dropped rather than sent late.

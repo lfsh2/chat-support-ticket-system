@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { canUseDevLogin } from "@/lib/dev-login";
+import { EMAIL_FEED_SLUG } from "@/lib/email/card";
 import { processInboundEmail } from "@/lib/email/inbox";
+import type { Mailbox } from "@/lib/email/mailbox";
 import { flushOutbox } from "@/lib/email/outbox";
 import { stripQuoted, type ParsedEmail } from "@/lib/email/parse";
 import { INBOX_ADDRESS } from "@/lib/gmail/client";
@@ -17,6 +19,8 @@ export async function POST(request: NextRequest) {
   const db = createAdminClient();
   const body = (await request.json()) as {
     action?: "receive" | "flush";
+    /** Which mailbox it arrives in / sends from (default: the CoachOS one). */
+    inbox?: string;
     from?: string;
     name?: string;
     subject?: string;
@@ -25,6 +29,17 @@ export async function POST(request: NextRequest) {
     labels?: string[];
     headers?: Record<string, string>;
   };
+
+  // Mailboxes as the real sync sees them; the CoachOS one is assumed even when not "connected" locally.
+  const { data: connections } = await db.from("mail_connections").select("email, program, channel_id").order("connected_at");
+  const { data: coachosFeed } = await db.from("channels").select("id").eq("slug", EMAIL_FEED_SLUG).maybeSingle();
+  const mailboxes: Mailbox[] = (connections ?? []).map((c) => ({ email: c.email.toLowerCase(), program: c.program, channelId: c.channel_id }));
+  if (!mailboxes.some((m) => m.email === INBOX_ADDRESS)) {
+    mailboxes.unshift({ email: INBOX_ADDRESS, program: "coachos", channelId: coachosFeed?.id ?? null });
+  }
+  const inbox = (body.inbox ?? INBOX_ADDRESS).toLowerCase();
+  const mailbox = mailboxes.find((m) => m.email === inbox);
+  if (!mailbox) return NextResponse.json({ error: `No mailbox ${inbox} is connected locally.` }, { status: 400 });
 
   if (body.action === "flush") {
     const sent: { to: string; subject: string; threadId: string | null }[] = [];
@@ -41,7 +56,7 @@ export async function POST(request: NextRequest) {
           return { id: `dev-sent-${crypto.randomUUID()}`, threadId: threadId ?? `dev-thread-${crypto.randomUUID()}` };
         },
       },
-      { inbox: INBOX_ADDRESS, appUrl: publicOrigin(request) },
+      { inbox, appUrl: publicOrigin(request), mailboxes },
     );
     return NextResponse.json({ ...result, emails: sent });
   }
@@ -53,7 +68,7 @@ export async function POST(request: NextRequest) {
     inReplyTo: null,
     fromEmail: (body.from ?? "someone@example.org").toLowerCase(),
     fromName: body.name ?? null,
-    to: [INBOX_ADDRESS],
+    to: [inbox],
     subject: body.subject ?? "Hello",
     text: stripQuoted(body.text ?? ""), // as parseGmailMessage does for real mail
     receivedAt: new Date().toISOString(),
@@ -61,7 +76,12 @@ export async function POST(request: NextRequest) {
     headers: body.headers ?? {},
     attachments: [],
   };
-  const outcome = await processInboundEmail(db, email, { inbox: INBOX_ADDRESS, fetchAttachment: null });
+  const outcome = await processInboundEmail(db, email, {
+    inbox,
+    program: mailbox.program,
+    feedChannelId: mailbox.channelId,
+    fetchAttachment: null,
+  });
   const { data: row } = await db
     .from("inbound_emails")
     .select("ticket_id, tickets(number)")

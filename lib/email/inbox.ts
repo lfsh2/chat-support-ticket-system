@@ -2,7 +2,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/database.types";
 import { membershipGrantsAccess, type Program } from "@/lib/access";
-import { EMAIL_FEED_SLUG, gmailThreadUrl, previewOf, type EmailCardMeta } from "./card";
+import { gmailThreadUrl, previewOf, type EmailCardMeta } from "./card";
+import { ticketProgram } from "./mailbox";
 import { cleanSubject, ignoreReason, type EmailAttachmentRef, type ParsedEmail } from "./parse";
 
 type Db = SupabaseClient<Database>;
@@ -11,16 +12,20 @@ export type InboundOutcome = "duplicate" | "ignored" | "ticket" | "appended" | "
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
 export type InboxDeps = {
-  /** The connected mailbox (coachos@…), lower-case. */
+  /** The connected mailbox this email arrived in (coachos@, support@…), lower-case. */
   inbox: string;
+  /** That mailbox's program: client emails open tickets there when the client has it. */
+  program: Program | null;
+  /** The team-only channel that mailbox's cards go to (null: no cards). */
+  feedChannelId: string | null;
   /** Downloads an attachment's bytes, or null when attachments can't be fetched (tests). */
   fetchAttachment: ((ref: EmailAttachmentRef) => Promise<Buffer>) | null;
 };
 
 /**
- * One email from the CoachOS inbox → the hub:
+ * One email from a connected mailbox → the hub:
  * - a client's new email opens a ticket (source 'email'); a reply in a known thread joins its ticket;
- * - anyone else gets a card in #coachos-email-ticket for the team to handle;
+ * - anyone else gets a card in that mailbox's team-only channel for the team to handle;
  * - newsletters, receipts, auto-replies and bounces are logged and dropped;
  * - mail the team sent from Gmail itself is mirrored into the ticket it belongs to.
  * Idempotent on the Gmail message id.
@@ -39,18 +44,18 @@ export async function processInboundEmail(db: Db, email: ParsedEmail, deps: Inbo
       await db.from("mail_threads").update({ last_message_id_header: email.messageIdHeader }).eq("gmail_thread_id", email.gmailThreadId);
     }
     if (ours || !thread) {
-      await log(db, email, ours ? "mirrored" : "ignored", { ignore_reason: ours ? null : "sent from Gmail, not a ticket thread" });
+      await log(db, deps, email, ours ? "mirrored" : "ignored", { ignore_reason: ours ? null : "sent from Gmail, not a ticket thread" });
       return ours ? "mirrored" : "ignored";
     }
-    const message = await postTicketMessage(db, thread.ticket_id, null, email, deps, "CoachOS inbox (Gmail)");
-    await log(db, email, "mirrored", { ticket_id: thread.ticket_id, hub_message_id: message });
+    const message = await postTicketMessage(db, thread.ticket_id, null, email, deps, `${deps.inbox} (Gmail)`);
+    await log(db, deps, email, "mirrored", { ticket_id: thread.ticket_id, hub_message_id: message });
     return "mirrored";
   }
 
-  const client = await findClient(db, email.fromEmail);
+  const client = await findClient(db, email.fromEmail, deps.program);
   const reason = ignoreReason(email, { knownClient: Boolean(client) });
   if (reason) {
-    await log(db, email, "ignored", { ignore_reason: reason });
+    await log(db, deps, email, "ignored", { ignore_reason: reason });
     return "ignored";
   }
 
@@ -63,7 +68,7 @@ export async function processInboundEmail(db: Db, email: ParsedEmail, deps: Inbo
       if (email.messageIdHeader) {
         await db.from("mail_threads").update({ last_message_id_header: email.messageIdHeader }).eq("gmail_thread_id", email.gmailThreadId);
       }
-      const inboundId = await log(db, email, "appended", { ticket_id: ticket.id, hub_message_id: msg });
+      const inboundId = await log(db, deps, email, "appended", { ticket_id: ticket.id, hub_message_id: msg });
       await postCard(db, email, deps, { inbound_id: inboundId, kind: "reply", ticket_number: ticket.number });
       return "appended";
     }
@@ -83,27 +88,28 @@ export async function processInboundEmail(db: Db, email: ParsedEmail, deps: Inbo
       ticket_id: ticket.id,
       subject: subject,
       last_message_id_header: email.messageIdHeader,
+      mailbox: deps.inbox,
     });
     const msg = await postTicketMessage(db, ticket.id, client.id, email, deps, null);
-    const inboundId = await log(db, email, "ticket", { ticket_id: ticket.id, hub_message_id: msg });
+    const inboundId = await log(db, deps, email, "ticket", { ticket_id: ticket.id, hub_message_id: msg });
     await postCard(db, email, deps, { inbound_id: inboundId, kind: "new_ticket", ticket_number: ticket.number });
     return "ticket";
   }
 
   // Someone who isn't a client (yet): a card for the team.
-  const inboundId = await log(db, email, "unmatched", {});
+  const inboundId = await log(db, deps, email, "unmatched", {});
   await postCard(db, email, deps, { inbound_id: inboundId, kind: "unmatched" });
   return "unmatched";
 }
 
-/** A member with live access, matched by email. Program: CoachOS if they have it (this is the CoachOS inbox). */
-async function findClient(db: Db, address: string): Promise<{ id: string; program: Program } | null> {
+/** A member with live access, matched by email. Program: the mailbox's if they have it. */
+async function findClient(db: Db, address: string, mailboxProgram: Program | null): Promise<{ id: string; program: Program } | null> {
   const { data: profile } = await db.from("profiles").select("id, role").eq("email", address).maybeSingle();
   if (!profile || profile.role !== "member") return null;
   const { data: memberships } = await db.from("memberships").select("program, status, grace_until").eq("user_id", profile.id);
   const live = (memberships ?? []).filter((m) => membershipGrantsAccess(m)).map((m) => m.program);
-  if (live.length === 0) return null;
-  return { id: profile.id, program: live.includes("coachos") ? "coachos" : live[0] };
+  const program = ticketProgram(live, mailboxProgram);
+  return program ? { id: profile.id, program } : null;
 }
 
 function ticketSubject(raw: string) {
@@ -155,6 +161,7 @@ async function saveAttachments(db: Db, folder: string, email: ParsedEmail, deps:
 
 async function log(
   db: Db,
+  deps: InboxDeps,
   email: ParsedEmail,
   status: "ticket" | "appended" | "unmatched" | "ignored" | "mirrored",
   extra: { ticket_id?: string | null; hub_message_id?: string | null; ignore_reason?: string | null },
@@ -170,6 +177,7 @@ async function log(
       subject: email.subject,
       body_text: email.text,
       received_at: email.receivedAt,
+      mailbox: deps.inbox,
       status,
       ...extra,
     })
@@ -185,8 +193,7 @@ async function postCard(
   deps: InboxDeps,
   card: Pick<EmailCardMeta, "inbound_id" | "kind" | "ticket_number">,
 ) {
-  const { data: feed } = await db.from("channels").select("id").eq("slug", EMAIL_FEED_SLUG).maybeSingle();
-  if (!feed) return;
+  if (!deps.feedChannelId) return;
   const meta: EmailCardMeta = {
     ...card,
     from_name: email.fromName,
@@ -204,7 +211,7 @@ async function postCard(
         ? `${who} replied by email on ticket #${card.ticket_number}`
         : `New email from ${who} (not a client yet): ${meta.subject}`;
   await db.from("messages").insert({
-    channel_id: feed.id,
+    channel_id: deps.feedChannelId,
     author_id: null,
     kind: "email",
     via: "email",

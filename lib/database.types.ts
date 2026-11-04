@@ -94,13 +94,13 @@ isOneToOne: false
                   ]
                 },"inbound_emails": {
                   Row: {
-                    "body_text": string | null,"created_at": string,"from_email": string,"from_name": string | null,"gmail_message_id": string,"gmail_thread_id": string,"hub_message_id": string | null,"id": string,"ignore_reason": string | null,"message_id_header": string | null,"received_at": string | null,"status": string,"subject": string | null,"ticket_id": string | null
+                    "body_text": string | null,"created_at": string,"from_email": string,"from_name": string | null,"gmail_message_id": string,"gmail_thread_id": string,"hub_message_id": string | null,"id": string,"ignore_reason": string | null,"mailbox": string | null,"message_id_header": string | null,"received_at": string | null,"status": string,"subject": string | null,"ticket_id": string | null
                   }
                   Insert: {
-                    "body_text"?: string | null,"created_at"?: string,"from_email": string,"from_name"?: string | null,"gmail_message_id": string,"gmail_thread_id": string,"hub_message_id"?: string | null,"id"?: string,"ignore_reason"?: string | null,"message_id_header"?: string | null,"received_at"?: string | null,"status": string,"subject"?: string | null,"ticket_id"?: string | null
+                    "body_text"?: string | null,"created_at"?: string,"from_email": string,"from_name"?: string | null,"gmail_message_id": string,"gmail_thread_id": string,"hub_message_id"?: string | null,"id"?: string,"ignore_reason"?: string | null,"mailbox"?: string | null,"message_id_header"?: string | null,"received_at"?: string | null,"status": string,"subject"?: string | null,"ticket_id"?: string | null
                   }
                   Update: {
-                    "body_text"?: string | null,"created_at"?: string,"from_email"?: string,"from_name"?: string | null,"gmail_message_id"?: string,"gmail_thread_id"?: string,"hub_message_id"?: string | null,"id"?: string,"ignore_reason"?: string | null,"message_id_header"?: string | null,"received_at"?: string | null,"status"?: string,"subject"?: string | null,"ticket_id"?: string | null
+                    "body_text"?: string | null,"created_at"?: string,"from_email"?: string,"from_name"?: string | null,"gmail_message_id"?: string,"gmail_thread_id"?: string,"hub_message_id"?: string | null,"id"?: string,"ignore_reason"?: string | null,"mailbox"?: string | null,"message_id_header"?: string | null,"received_at"?: string | null,"status"?: string,"subject"?: string | null,"ticket_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -132,16 +132,22 @@ isOneToOne: false
                   ]
                 },"mail_connections": {
                   Row: {
-                    "connected_at": string,"connected_by": string | null,"email": string,"history_id": string | null,"id": string,"last_error": string | null,"last_synced_at": string | null,"provider": string,"refresh_token_enc": string,"sync_started_at": string | null
+                    "channel_id": string | null,"connected_at": string,"connected_by": string | null,"email": string,"history_id": string | null,"id": string,"last_error": string | null,"last_synced_at": string | null,"program": Database["public"]['Enums']["program"] | null,"provider": string,"refresh_token_enc": string,"sync_started_at": string | null
                   }
                   Insert: {
-                    "connected_at"?: string,"connected_by"?: string | null,"email": string,"history_id"?: string | null,"id"?: string,"last_error"?: string | null,"last_synced_at"?: string | null,"provider"?: string,"refresh_token_enc": string,"sync_started_at"?: string | null
+                    "channel_id"?: string | null,"connected_at"?: string,"connected_by"?: string | null,"email": string,"history_id"?: string | null,"id"?: string,"last_error"?: string | null,"last_synced_at"?: string | null,"program"?: Database["public"]['Enums']["program"] | null,"provider"?: string,"refresh_token_enc": string,"sync_started_at"?: string | null
                   }
                   Update: {
-                    "connected_at"?: string,"connected_by"?: string | null,"email"?: string,"history_id"?: string | null,"id"?: string,"last_error"?: string | null,"last_synced_at"?: string | null,"provider"?: string,"refresh_token_enc"?: string,"sync_started_at"?: string | null
+                    "channel_id"?: string | null,"connected_at"?: string,"connected_by"?: string | null,"email"?: string,"history_id"?: string | null,"id"?: string,"last_error"?: string | null,"last_synced_at"?: string | null,"program"?: Database["public"]['Enums']["program"] | null,"provider"?: string,"refresh_token_enc"?: string,"sync_started_at"?: string | null
                   }
                   Relationships: [
                     {
+      foreignKeyName: "mail_connections_channel_id_fkey"
+      columns: ["channel_id"]
+isOneToOne: false
+      referencedRelation: "channels"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "mail_connections_connected_by_fkey"
       columns: ["connected_by"]
 isOneToOne: false
@@ -151,13 +157,13 @@ isOneToOne: false
                   ]
                 },"mail_threads": {
                   Row: {
-                    "created_at": string,"gmail_thread_id": string,"last_message_id_header": string | null,"subject": string,"ticket_id": string
+                    "created_at": string,"gmail_thread_id": string,"last_message_id_header": string | null,"mailbox": string | null,"subject": string,"ticket_id": string
                   }
                   Insert: {
-                    "created_at"?: string,"gmail_thread_id": string,"last_message_id_header"?: string | null,"subject": string,"ticket_id": string
+                    "created_at"?: string,"gmail_thread_id": string,"last_message_id_header"?: string | null,"mailbox"?: string | null,"subject": string,"ticket_id": string
                   }
                   Update: {
-                    "created_at"?: string,"gmail_thread_id"?: string,"last_message_id_header"?: string | null,"subject"?: string,"ticket_id"?: string
+                    "created_at"?: string,"gmail_thread_id"?: string,"last_message_id_header"?: string | null,"mailbox"?: string | null,"subject"?: string,"ticket_id"?: string
                   }
                   Relationships: [
                     {
@@ -455,7 +461,7 @@ isOneToOne: false
                            },
 "mail_connection_status":
 { Args: Record<PropertyKey, never>; Returns: {
-              "connected_at": string,"email": string,"last_error": string,"last_synced_at": string
+              "channel_id": string,"connected_at": string,"email": string,"last_error": string,"last_synced_at": string,"program": Database["public"]['Enums']["program"]
             }[]
                            },
 "mark_channel_read":

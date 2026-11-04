@@ -6,7 +6,7 @@ import { z } from "zod";
 import { membershipGrantsAccess, type Program } from "@/lib/access";
 import { ALWAYS_TEAM_ONLY_SLUGS, PROTECTED_CHANNEL_SLUGS, toChannelName } from "@/lib/channels";
 import { Constants } from "@/lib/database.types";
-import { syncMailbox } from "@/lib/gmail/sync";
+import { syncMailboxes } from "@/lib/gmail/sync";
 import { requireHubAccess } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/server";
 import { originFromHeaders } from "@/lib/url";
@@ -159,15 +159,17 @@ export async function archiveChannel(id: string): Promise<Result> {
 
 const STAFF_ROLES = new Set(["agent", "admin", "owner"]);
 
-/** Staff: check the CoachOS mailbox now instead of waiting for the next minute. */
-export async function syncMailNow(): Promise<Result & { summary?: string }> {
+/** Staff: check the mailbox feeding this channel now instead of waiting for the next minute. */
+export async function syncMailNow(channelId: string): Promise<Result & { summary?: string }> {
+  if (!z.uuid().safeParse(channelId).success) return { ok: false, error: "Something went wrong." };
   const { profile } = await requireHubAccess();
   if (!STAFF_ROLES.has(profile.role)) return { ok: false, error: "Only the team can do that." };
-  const report = await syncMailbox(createAdminClient(), originFromHeaders(await headers()));
+  const [report] = await syncMailboxes(createAdminClient(), originFromHeaders(await headers()), { channelId });
   refresh();
+  if (!report) return { ok: false, error: "No mailbox is connected to this channel yet." };
   switch (report.status) {
     case "not_connected":
-      return { ok: false, error: "The CoachOS mailbox isn't connected yet." };
+      return { ok: false, error: "No mailbox is connected to this channel yet." };
     case "busy":
       return { ok: true, summary: "A check is already running. New mail will appear in a moment." };
     case "error":

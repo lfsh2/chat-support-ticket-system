@@ -3,7 +3,7 @@ import type { GmailMessage } from "@/lib/email/parse";
 
 /**
  * The few Gmail API calls the hub needs, over plain fetch (no SDK). Scope: gmail.modify
- * (read, send, label) on the one shared CoachOS mailbox, authorised once by an admin.
+ * (read, send, label) on each shared mailbox (coachos@, support@…), authorised once by an admin.
  */
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -13,7 +13,7 @@ export const GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.modify"];
 /** Cookie holding the OAuth `state` between /api/gmail/connect and the callback. */
 export const STATE_COOKIE = "gmail_oauth_state";
 
-/** The mailbox the hub may connect to; anything else is refused at sign-in. */
+/** The CoachOS mailbox: suggested at Google sign-in for #coachos-email-ticket, and used by local dev mail. */
 export const INBOX_ADDRESS = (process.env.MAIL_INBOX_ADDRESS ?? "coachos@aliveandfreeconsulting.com").toLowerCase();
 
 export class GmailError extends Error {
@@ -36,7 +36,7 @@ export function gmailConfigured() {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.MAIL_TOKEN_KEY);
 }
 
-export function consentUrl(state: string, redirectUri: string) {
+export function consentUrl(state: string, redirectUri: string, loginHint?: string | null) {
   const params = new URLSearchParams({
     client_id: clientCreds().id,
     redirect_uri: redirectUri,
@@ -45,7 +45,7 @@ export function consentUrl(state: string, redirectUri: string) {
     access_type: "offline", // → refresh token
     prompt: "consent", // → always issue one, even on reconnect
     include_granted_scopes: "true",
-    login_hint: INBOX_ADDRESS,
+    ...(loginHint ? { login_hint: loginHint } : {}),
     state,
   });
   return `${AUTH_URL}?${params}`;

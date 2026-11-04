@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { decryptSecret } from "@/lib/crypto";
 import { processInboundEmail, type InboundOutcome } from "@/lib/email/inbox";
+import type { Mailbox } from "@/lib/email/mailbox";
 import { flushOutbox } from "@/lib/email/outbox";
 import { parseGmailMessage } from "@/lib/email/parse";
 import { Gmail, GmailError, accessTokenFrom } from "./client";
@@ -16,26 +17,36 @@ export type SyncReport =
   | { status: "ok"; read: number; outcomes: Partial<Record<InboundOutcome, number>>; sent: number }
   | { status: "error"; error: string };
 
-/**
- * One pass: read what's new in the CoachOS mailbox since the last pass, turn it into
- * tickets / feed cards, then send any queued replies. Run every minute by Supabase cron
- * (POST /api/cron/mail) and on demand from "Sync now".
- */
-export async function syncMailbox(db: Db, appUrl: string): Promise<SyncReport> {
-  const { data: latest } = await db.from("mail_connections").select("id").order("connected_at", { ascending: false }).limit(1).maybeSingle();
-  if (!latest) return { status: "not_connected" };
+export type MailboxReport = SyncReport & { email: string };
 
-  // Claim the mailbox so a cron tick and "Sync now" can't process the same mail twice.
+/**
+ * One pass over every connected mailbox (or just the one feeding `channelId`): read what's
+ * new, turn it into tickets / feed cards, then send any queued replies. Run every minute by
+ * Supabase cron (POST /api/cron/mail) and on demand from "Check now".
+ */
+export async function syncMailboxes(db: Db, appUrl: string, only?: { channelId: string }): Promise<MailboxReport[]> {
+  const { data: connections } = await db.from("mail_connections").select("id, email, program, channel_id").order("connected_at");
+  const mailboxes: Mailbox[] = (connections ?? []).map((c) => ({ email: c.email.toLowerCase(), program: c.program, channelId: c.channel_id }));
+  const targets = (connections ?? []).filter((c) => !only || c.channel_id === only.channelId);
+
+  const reports: MailboxReport[] = [];
+  for (const c of targets) reports.push({ email: c.email, ...(await syncOne(db, c.id, mailboxes, appUrl)) });
+  return reports;
+}
+
+async function syncOne(db: Db, connectionId: string, mailboxes: Mailbox[], appUrl: string): Promise<SyncReport> {
+  // Claim the mailbox so a cron tick and "Check now" can't process the same mail twice.
   // A claim older than 5 minutes is a crashed run and may be taken over.
   const staleBefore = new Date(Date.now() - 5 * 60_000).toISOString();
   const { data: conn } = await db
     .from("mail_connections")
     .update({ sync_started_at: new Date().toISOString() })
-    .eq("id", latest.id)
+    .eq("id", connectionId)
     .or(`sync_started_at.is.null,sync_started_at.lt.${staleBefore}`)
     .select("*")
     .maybeSingle();
   if (!conn) return { status: "busy" };
+  const inbox = conn.email.toLowerCase();
 
   try {
     const gmail = new Gmail(await accessTokenFrom(decryptSecret(conn.refresh_token_enc)));
@@ -74,13 +85,15 @@ export async function syncMailbox(db: Db, appUrl: string): Promise<SyncReport> {
       }
       const email = parseGmailMessage(msg);
       const outcome = await processInboundEmail(db, email, {
-        inbox: conn.email,
+        inbox,
+        program: conn.program,
+        feedChannelId: conn.channel_id,
         fetchAttachment: (ref) => gmail.attachment(id, ref.attachmentId),
       });
       outcomes[outcome] = (outcomes[outcome] ?? 0) + 1;
     }
 
-    const { sent } = await flushOutbox(db, { send: (raw, threadId) => gmail.send(raw, threadId) }, { inbox: conn.email, appUrl });
+    const { sent } = await flushOutbox(db, { send: (raw, threadId) => gmail.send(raw, threadId) }, { inbox, appUrl, mailboxes });
 
     await db
       .from("mail_connections")

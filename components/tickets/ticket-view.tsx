@@ -35,6 +35,7 @@ export function TicketView({
   initialMessages,
   panel,
   emailTo = null,
+  emailFrom = null,
   highlightId = null,
 }: {
   ticket: TicketDetail;
@@ -43,6 +44,8 @@ export function TicketView({
   panel: TicketPanelData | null;
   /** Staff only: the client's address when replies are also sent by email. */
   emailTo?: string | null;
+  /** Staff only: the connected mailbox those emails go out from. */
+  emailFrom?: string | null;
   /** A message to scroll to and flash (from the Inbox). */
   highlightId?: string | null;
 }) {
@@ -265,7 +268,7 @@ export function TicketView({
               </ToggleGroup>
             )}
             {isStaff && emailTo && mode === "user" && (
-              <p className="text-muted-foreground mb-1.5 text-xs">Your reply will also be emailed to {emailTo} from the CoachOS inbox.</p>
+              <p className="text-muted-foreground mb-1.5 text-xs">Your reply will also be emailed to {emailTo} from {emailFrom ?? "the team mailbox"}.</p>
             )}
           </Composer>
           </>

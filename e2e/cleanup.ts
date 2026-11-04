@@ -35,7 +35,15 @@ export async function fakeMailbox(on: boolean) {
   const admin = createClient<Database>(url, key, { auth: { persistSession: false } });
   if (on) {
     const { data } = await admin.from("mail_connections").select("id").limit(1);
-    if (!data?.length) await admin.from("mail_connections").insert({ email: "coachos@aliveandfreeconsulting.com", refresh_token_enc: PLACEHOLDER_TOKEN });
+    if (!data?.length) {
+      const { data: feed } = await admin.from("channels").select("id").eq("slug", "coachos-email-ticket").maybeSingle();
+      await admin.from("mail_connections").insert({
+        email: "coachos@aliveandfreeconsulting.com",
+        refresh_token_enc: PLACEHOLDER_TOKEN,
+        channel_id: feed?.id ?? null,
+        program: "coachos",
+      });
+    }
   } else {
     await admin.from("mail_connections").delete().eq("refresh_token_enc", PLACEHOLDER_TOKEN);
   }

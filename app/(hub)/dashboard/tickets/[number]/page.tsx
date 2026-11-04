@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { TicketView, type TicketDetail } from "@/components/tickets/ticket-view";
 import type { TicketPanelData } from "@/components/tickets/ticket-panel";
 import { isStaffRole, STAFF_ROLES } from "@/lib/access";
+import { pickMailbox } from "@/lib/email/mailbox";
 import { MESSAGE_SELECT, PAGE_SIZE, type ChatMessage } from "@/lib/chat/types";
 import { APP_NAME } from "@/lib/config";
 import { requireHubAccess } from "@/lib/session";
+import { createAdminClient } from "@/lib/supabase/server";
 import { TASK_SELECT, type TaskRow } from "@/lib/tasks";
 import { dayKey, safeTimeZone } from "@/lib/time";
 
@@ -50,7 +52,7 @@ export default async function TicketPage({ params, searchParams }: PageProps<"/d
     );
   }
 
-  const [{ data: messages }, { data: staff }, { data: memberships }, { data: past }, { data: tasks }, { data: mailbox }] = await Promise.all([
+  const [{ data: messages }, { data: staff }, { data: memberships }, { data: past }, { data: tasks }, { data: mailboxes }, { data: thread }] = await Promise.all([
     messagesQuery,
     supabase.from("profiles").select("id, display_name, avatar_url").in("role", STAFF_ROLES).order("display_name"),
     supabase.from("memberships").select("program, status, grace_until").eq("user_id", ticket.requester_id),
@@ -62,9 +64,15 @@ export default async function TicketPage({ params, searchParams }: PageProps<"/d
       .limit(7),
     supabase.from("tasks").select(TASK_SELECT).eq("ticket_id", ticket.id).order("created_at"),
     supabase.rpc("mail_connection_status"),
+    // The thread map is server-only; staff just need to know which mailbox it came through.
+    createAdminClient().from("mail_threads").select("mailbox").eq("ticket_id", ticket.id).maybeSingle(),
   ]);
-  // Team replies are emailed to the client once the CoachOS mailbox is connected.
-  const emailTo = mailbox?.length && ticket.requester?.email ? ticket.requester.email : null;
+  // Team replies are emailed to the client from the mailbox they wrote to (or the program's).
+  const from = pickMailbox(
+    (mailboxes ?? []).map((m) => ({ email: m.email, program: m.program, channelId: m.channel_id })),
+    { program: ticket.program, threadMailbox: thread?.mailbox ?? null },
+  );
+  const emailTo = from && ticket.requester?.email ? ticket.requester.email : null;
 
   const panel: TicketPanelData = {
     ticket,
@@ -85,6 +93,7 @@ export default async function TicketPage({ params, searchParams }: PageProps<"/d
       initialMessages={(messages ?? []) as unknown as ChatMessage[]}
       panel={panel}
       emailTo={emailTo}
+      emailFrom={from?.email ?? null}
       highlightId={highlightId}
     />
   );

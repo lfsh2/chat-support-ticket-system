@@ -11,53 +11,73 @@ import { syncMailNow } from "@/app/(hub)/c/actions";
 import { createClient } from "@/lib/supabase/client";
 import { formatAge, safeTimeZone } from "@/lib/time";
 
-type Status = { email: string; connected_at: string; last_synced_at: string | null; last_error: string | null } | null;
+type Connection = {
+  email: string;
+  channel_id: string | null;
+  connected_at: string;
+  last_synced_at: string | null;
+  last_error: string | null;
+};
 
 const RETURN_MESSAGES: Record<string, [ok: boolean, text: string]> = {
-  connected: [true, "CoachOS mailbox connected. New emails will appear here within a minute."],
-  wrong_account: [false, "That was a different Google account. Sign in as coachos@aliveandfreeconsulting.com."],
+  connected: [true, "Mailbox connected. New emails will appear here within a minute."],
+  in_use: [false, "That Google account is already connected to another channel."],
+  not_team_only: [false, "Mailboxes can only be connected to team-only channels."],
   cancelled: [false, "Connecting was cancelled. Nothing changed."],
   expired: [false, "That took too long. Please try connecting again."],
-  forbidden: [false, "Only admins can connect the mailbox."],
+  forbidden: [false, "Only admins can connect a mailbox."],
   not_configured: [false, "Gmail isn't set up on the server yet (Google client ID and secret)."],
   error: [false, "Google didn't let us connect. Please try again."],
 };
 
-/** The strip at the top of #coachos-email-ticket: is the mailbox connected, when it last checked, and the buttons. */
-export function MailboxStatus() {
-  const { profile, isStaff } = useHub();
-  const router = useRouter();
-  const params = useSearchParams();
+/** Every connected mailbox (staff only; never the token). */
+export function useMailboxes(enabled = true) {
   const supabase = useMemo(() => createClient(), []);
-  const [pending, startTransition] = useTransition();
-  const isAdmin = profile.role === "admin" || profile.role === "owner";
-  const timeZone = safeTimeZone(profile.timezone);
-
-  const { data: status, refetch } = useQuery({
+  return useQuery({
     queryKey: ["mailbox-status"],
-    queryFn: async (): Promise<Status> => {
+    enabled,
+    queryFn: async (): Promise<Connection[]> => {
       const { data, error } = await supabase.rpc("mail_connection_status");
       if (error) throw error;
-      return data?.[0] ?? null;
+      return data ?? [];
     },
     refetchInterval: 60_000,
   });
+}
+
+/**
+ * The strip at the top of a team-only channel: which mailbox feeds it, when it last
+ * checked, and the buttons. Admins can connect one where there's none yet.
+ */
+export function MailboxStatus({ channelId }: { channelId: string }) {
+  const { profile, isStaff } = useHub();
+  const router = useRouter();
+  const params = useSearchParams();
+  const [pending, startTransition] = useTransition();
+  const isAdmin = profile.role === "admin" || profile.role === "owner";
+  const timeZone = safeTimeZone(profile.timezone);
+  const { data: connections, refetch } = useMailboxes();
+  const status = connections?.find((c) => c.channel_id === channelId) ?? null;
+  const connectHref = `/api/gmail/connect?channel=${channelId}`;
 
   // Coming back from Google: say how it went, once, then tidy the URL.
   const result = params.get("gmail");
+  const inUse = params.get("in");
   useEffect(() => {
     if (!result) return;
     const [ok, text] = RETURN_MESSAGES[result] ?? RETURN_MESSAGES.error;
     if (ok) toast.success(text);
-    else toast.error(text);
+    else toast.error(result === "in_use" && inUse ? `That Google account already feeds #${inUse}.` : text);
     router.replace(window.location.pathname, { scroll: false });
-  }, [result, router]);
+  }, [result, inUse, router]);
 
-  if (!isStaff || status === undefined) return null;
+  if (!isStaff || connections === undefined) return null;
+  // Team-only channels that aren't email feeds stay quiet for everyone but admins.
+  if (!status && !isAdmin) return null;
 
   const sync = () =>
     startTransition(async () => {
-      const res = await syncMailNow();
+      const res = await syncMailNow(channelId);
       if (!res.ok) toast.error(res.error);
       else toast.success(res.summary ?? "Checked.");
       await refetch();
@@ -84,7 +104,7 @@ export function MailboxStatus() {
             <RefreshCw className={pending ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden /> {pending ? "Checking…" : "Check now"}
           </Button>
           {isAdmin && (
-            <a href="/api/gmail/connect" className="text-muted-foreground hover:text-foreground text-[13px] underline-offset-4 hover:underline">
+            <a href={connectHref} className="text-muted-foreground hover:text-foreground text-[13px] underline-offset-4 hover:underline">
               Reconnect
             </a>
           )}
@@ -93,18 +113,15 @@ export function MailboxStatus() {
         <>
           <Plug className="text-muted-foreground size-4 shrink-0" aria-hidden />
           <p className="text-muted-foreground min-w-0 flex-1">
-            The CoachOS mailbox isn&apos;t connected yet.{" "}
-            {isAdmin ? "Connect it to bring every email in here." : "Ask an admin to connect it."}
+            No mailbox is connected here. Connect a Gmail account (like support@) to bring its emails into this channel.
           </p>
-          {isAdmin && (
-            <Button
-              nativeButton={false}
-              render={<a href="/api/gmail/connect" />}
-              className="bg-ink text-background hover:bg-ink/90 h-9 cursor-pointer px-3 text-[13px] font-semibold"
-            >
-              Connect Gmail
-            </Button>
-          )}
+          <Button
+            nativeButton={false}
+            render={<a href={connectHref} />}
+            className="bg-ink text-background hover:bg-ink/90 h-9 cursor-pointer px-3 text-[13px] font-semibold"
+          >
+            Connect Gmail
+          </Button>
         </>
       )}
     </div>

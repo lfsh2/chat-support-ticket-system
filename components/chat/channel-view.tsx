@@ -17,7 +17,7 @@ import { PROGRAMS } from "@/lib/config";
 import { Composer, ReadOnlyNotice } from "./composer";
 import { ChannelMenu } from "./channel-menu";
 import { ClientChannelMenu } from "./client-channel-menu";
-import { MailboxStatus } from "./mailbox-status";
+import { MailboxStatus, useMailboxes } from "./mailbox-status";
 import { TicketFromMessageDialog } from "@/components/tickets/ticket-from-message-dialog";
 import { MessageList, type MessageListHandle } from "./message-list";
 import { ThreadPanel } from "./thread-panel";
@@ -154,6 +154,8 @@ export function ChannelView({
   const Icon = isClientChannel ? Lock : channel.staff_only ? Inbox : channel.type === "announcement" ? Megaphone : Hash;
   const program = channel.program ? PROGRAMS[channel.program] : null;
   const isAdmin = profile.role === "admin" || profile.role === "owner";
+  const { data: mailboxes } = useMailboxes(channel.staff_only && isStaff);
+  const mailbox = mailboxes?.find((m) => m.channel_id === channel.id) ?? null;
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -182,7 +184,7 @@ export function ChannelView({
           !isAdmin ? undefined : isClientChannel ? <ClientChannelMenu channel={channel} /> : <ChannelMenu channelId={channel.id} />
         }
       />
-      {channel.staff_only && channel.slug === "coachos-email-ticket" && <MailboxStatus />}
+      {channel.staff_only && !isClientChannel && <MailboxStatus channelId={channel.id} />}
 
       <MessageList
         ref={list}
@@ -221,7 +223,9 @@ export function ChannelView({
             </h2>
             <p className="text-muted-foreground mt-3 max-w-prose text-[15px] leading-relaxed">
               {channel.staff_only
-                ? "Every email to CoachOS@AliveAndFreeConsulting.com lands here. Clients' emails open tickets automatically; anyone else shows up as a card for the team to handle. Only the team can see this channel."
+                ? mailbox
+                  ? `Every email to ${mailbox.email} lands here. Clients' emails open tickets automatically; anyone else shows up as a card for the team to handle. Only the team can see this channel.`
+                  : `${channel.description ? `${channel.description}. ` : ""}Only the team can see this channel.`
                 : isClientChannel
                 ? channel.client_id === profile.id
                   ? "Your private space with the Alive + Free team. Only you and the team can see it, so share anything about your setup, your questions or your plans."

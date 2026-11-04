@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { stripMentions } from "@/lib/mentions";
+import { pickMailbox, type Mailbox } from "./mailbox";
 import { buildRawEmail, ticketEmailBodies } from "./mime";
 
 type Db = SupabaseClient<Database>;
@@ -17,18 +18,27 @@ const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const RESOLVED_TEXT =
   "We've marked this as resolved. If it isn't sorted yet, just reply to this email and we'll pick it straight back up.";
 
+type FlushOptions = {
+  /** The mailbox sending this round (lower-case). */
+  inbox: string;
+  appUrl: string;
+  /** Every connected mailbox: a job is sent by the one pickMailbox() chooses, and left for it otherwise. */
+  mailboxes: readonly Mailbox[];
+};
+
 /**
  * Sends what's waiting in email_outbox: team replies typed in the hub, and "resolved"
- * notices. Each goes from the CoachOS mailbox into the ticket's Gmail thread (a new thread
- * the first time a web ticket gets a reply), so the client can simply reply to the email.
+ * notices. Each goes from the mailbox the client wrote to (or the ticket's program's) into
+ * the ticket's Gmail thread (a new thread the first time a web ticket gets a reply), so the
+ * client can simply reply to the email.
  */
-export async function flushOutbox(db: Db, sender: MailSender, opts: { inbox: string; appUrl: string }) {
+export async function flushOutbox(db: Db, sender: MailSender, opts: FlushOptions) {
   const { data: queue } = await db
     .from("email_outbox")
     .select("*")
     .eq("status", "pending")
     .order("created_at")
-    .limit(25);
+    .limit(50);
 
   let sent = 0;
   for (const job of queue ?? []) {
@@ -53,20 +63,29 @@ export async function flushOutbox(db: Db, sender: MailSender, opts: { inbox: str
 async function sendOne(
   db: Db,
   sender: MailSender,
-  opts: { inbox: string; appUrl: string },
+  opts: FlushOptions,
   job: Database["public"]["Tables"]["email_outbox"]["Row"],
-): Promise<"sent" | "skipped"> {
+): Promise<"sent" | "skipped" | "not_mine"> {
   const skip = async (reason: string) => {
     await db.from("email_outbox").update({ status: "skipped", last_error: reason }).eq("id", job.id);
     return "skipped" as const;
   };
+
+  const [{ data: ticket }, { data: thread }] = await Promise.all([
+    db
+      .from("tickets")
+      .select("id, number, subject, program, requester:profiles!tickets_requester_id_fkey(email, display_name, role)")
+      .eq("id", job.ticket_id)
+      .single(),
+    db.from("mail_threads").select("*").eq("ticket_id", job.ticket_id).maybeSingle(),
+  ]);
+  // Another connected mailbox sends this one (it runs its own round).
+  if (ticket) {
+    const from = pickMailbox(opts.mailboxes, { program: ticket.program, threadMailbox: thread?.mailbox ?? null });
+    if (from && from.email.toLowerCase() !== opts.inbox) return "not_mine";
+  }
   if (Date.now() - new Date(job.created_at).getTime() > MAX_AGE_MS) return skip("older than a day; not sent");
 
-  const { data: ticket } = await db
-    .from("tickets")
-    .select("id, number, subject, requester:profiles!tickets_requester_id_fkey(email, display_name, role)")
-    .eq("id", job.ticket_id)
-    .single();
   const requester = ticket?.requester as { email: string; display_name: string; role: string } | null | undefined;
   if (!ticket || !requester?.email) return skip("ticket or client email missing");
   if (requester.role !== "member") return skip("requester is on the team");
@@ -84,7 +103,9 @@ async function sendOne(
     signedBy = (m.author as { display_name: string } | null)?.display_name.replace(/\s*\(.*?\)\s*/g, " ").trim() || signedBy;
   }
 
-  const { data: thread } = await db.from("mail_threads").select("*").eq("ticket_id", ticket.id).maybeSingle();
+  // Gmail threads belong to one mailbox: if this thread came through another (now disconnected)
+  // one, start a new thread from this mailbox instead.
+  const sameMailbox = thread && (!thread.mailbox || thread.mailbox.toLowerCase() === opts.inbox);
   const subject = thread ? `Re: ${thread.subject}` : `[#${ticket.number}] ${ticket.subject}`;
   const ticketUrl = `${opts.appUrl}/dashboard/tickets/${ticket.number}`;
   const { text, html } = ticketEmailBodies({ message, signedBy, ticketUrl, ticketNumber: ticket.number });
@@ -94,13 +115,13 @@ async function sendOne(
     subject,
     text,
     html,
-    inReplyTo: thread?.last_message_id_header ?? null,
-    references: thread?.last_message_id_header ?? null,
+    inReplyTo: sameMailbox ? thread.last_message_id_header : null,
+    references: sameMailbox ? thread.last_message_id_header : null,
   });
 
-  const result = await sender.send(raw, thread?.gmail_thread_id ?? null);
+  const result = await sender.send(raw, sameMailbox ? thread.gmail_thread_id : null);
   if (!thread) {
-    await db.from("mail_threads").insert({ gmail_thread_id: result.threadId, ticket_id: ticket.id, subject: subject });
+    await db.from("mail_threads").insert({ gmail_thread_id: result.threadId, ticket_id: ticket.id, subject: subject, mailbox: opts.inbox });
   }
   await db
     .from("email_outbox")
